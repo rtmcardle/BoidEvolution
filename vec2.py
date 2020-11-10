@@ -55,11 +55,11 @@ class vec2(struct('vec2', ('x', 'y'))):
     def wrap(self, bounds):
         dx = abs(self.x)
         dy = abs(self.y)
-        if dx > bounds[0]/2:
+        if dx >= bounds[0]/2:
             x = bounds[0] - dx
         else:
             x = self.x
-        if dy > bounds[1]/2:
+        if dy >= bounds[1]/2:
             y = bounds[1] - dy
         else:
             y = self.y

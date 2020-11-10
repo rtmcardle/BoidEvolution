@@ -47,24 +47,9 @@ class Boid:
 
     def seek(self, target):
         desired = (target.position - self.position).wrap(self.bounds)
-
-        #################
-        #dx = abs(desired.x)
-        #if dx > self.width/2:
-        #    x = self.width - dx
-        #else:
-        #    x = desired.x
-        #dy = abs(desired.y)
-        #if dy > self.height/2:
-        #    y = self.height - dy
-        #else:
-        #    y = desired.y
-        #desired = vec2(x,y)
-        #################
-
         desired = desired.normalized()
         desired *= self.max_velocity
-        steer = (desired - self.velocity).wrap(self.bounds)
+        steer = desired - self.velocity
         steer = steer.limited(self.max_acceleration)
         return steer
 
@@ -136,17 +121,19 @@ class Boid:
         sum = vec2(0, 0)
         count = 0
         for other in boids:
-            #d = (self.position - other.position).length()
-            #if 0 < d < neighbor_dist:
-            sum += other.velocity
-            count += 1
+            d = (self.position - other.position).wrap(self.bounds).length()
+            if 0 < d < neighbor_dist:
+                #align = other.velocity/count
+                #sum += align
+                sum += other.velocity
+                count += 1
 
         if count > 0:
             sum /= count
             # Implement Reynolds: Steering = Desired - Velocity
             sum = sum.normalized()
             sum *= self.max_velocity
-            steer = (sum - self.velocity).wrap(self.bounds)
+            steer = sum - self.velocity
             steer = steer.limited(self.max_acceleration)
             return steer
         else:
@@ -158,19 +145,20 @@ class Boid:
     def cohesion(self, boids):
         neighbor_dist = self.alignCohRadius
         sum = vec2(0, 0)  # Start with empty vector to accumulate all positions
-        #count = 0
-        count = len(boids)
-        if count > 0:
-            for other in boids:
-                #d = (self.position - other.position).length()
-                #if 0 < d < neighbor_dist:
-                #################################
-                #sum += other.position  # Add position
-                #count += 1
-                #################################
+        count = 0
+        #count = len(boids)
+        #if count > 0:
+        for other in boids:
+            d = (self.position - other.position).wrap(self.bounds).length()
+            if 0 < d < neighbor_dist:
+            #################################
+            #sum += other.position  # Add position
+            #count += 1
+            #################################
                 target = self.seek(other)
-                sum += target/count
-            return sum
+                sum += target
+        if count > 0:
+            return sum/count
         else:
             return vec2(0, 0)
 
@@ -195,7 +183,7 @@ class Boid:
         # Limit speed
         self.velocity = self.velocity.limited(self.max_velocity)
         self.position += self.velocity
-        if not (0<=self.position.x<=self.width) or not (0<=self.position.y<=self.height):
+        if not (0 <= self.position.x <= self.width) or not (0 <= self.position.y <= self.height):
             self.borders()
         # Reset acceleration to 0 each cycle
         self.acceleration = vec2(0, 0)
@@ -220,27 +208,21 @@ class Flock:
         self.sepRadius = sepRadius
         self.maxAccel = maxAccel
 
+        ## Initializes simulation
         self.boids = []
         self.start = datetime.datetime.now()
         self.frames = 0
         #random.seed(3)
+
+        ## Generates swarm of boids
         for i in range(count):
             boid = Boid(random.uniform(-1,1)*width, random.uniform(-1,1)*height, width, height, alignWeight, sepWeight, cohWeight, alignCohRadius, sepRadius, maxAccel)
-            #boid.width = width
-            #boid.height = height
             self.boids.append(boid)
 
     def run(self,positions):
-        #o_points = np.ndarray((len(self.boids),2), buffer=np.array(positions))
-        gsp = GriSPy(positions, N_cells = 100, periodic={0:(0,self.width), 1:(0,self.height)})
+        gsp = GriSPy(positions, N_cells = 5, periodic={0:(0,self.width), 1:(0,self.height)})
         dub = max(self.alignCohRadius, self.sepRadius)
         _, neighbor_indices = gsp.bubble_neighbors(positions,distance_upper_bound=dub)
-        #for boid in self.boids:
-        #    # Passing the entire list of boids to each boid individually
-        #    this_boid = np.ndarray((1,2), buffer=np.array([boid.position.x,boid.position.y]))
-        #    _, n_index = gsp.bubble_neighbors(this_boid, distance_upper_bound=50)
-        #    neighbors = [self.boids[i] for i in n_index[0]]
-        #    boid.run(neighbors)
         
         for i in range(len(self.boids)):
             this_boid = self.boids[i]
@@ -264,9 +246,9 @@ from matplotlib.animation import FuncAnimation
 ##random.seed(1)
 
 count=150
-screen_width = 5000
+screen_width = 2500
 screen_height = screen_width
-sample_species = [1.0, 1.0, 1.0, 250, 250, 10]
+sample_species = [1.0, 1.5, 1.35, 200, 75, 2.5]
 
 flock = Flock(count, screen_width, screen_height, *sample_species)
 P = np.ndarray((count,2), buffer=np.array([(boid.position.x,boid.position.y) for boid in flock.boids]))
@@ -282,7 +264,7 @@ def update(*args):
 
 
 
-fig = plt.figure()
+fig = plt.figure(figsize=(12.0,10.0))
 ax = fig.add_axes([0.0, 0.0, 1.0, 1.0], frameon=True)
 scatter = ax.scatter(P[:,0], P[:,1],
                      s=30, facecolor="red", edgecolor="None", alpha=0.5)
