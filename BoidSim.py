@@ -18,25 +18,53 @@ from grispy import GriSPy
 
 
 class Boid:
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y, width, height, alignWeight, sepWeight, cohWeight, alignCohRadius, sepRadius, maxAccel):
+        
+        ## Frame variables
+        self.position = vec2(x, y)
         self.width = width
         self.height = height
+        self.bounds = (self.width,self.height)
+
+        ## Species variables
+        self.alignWeight = alignWeight
+        self.sepWeight = sepWeight
+        self.cohWeight = cohWeight
+        self.alignCohRadius = alignCohRadius
+        self.sepRadius = sepRadius
+        self.maxAccel = maxAccel
+
+        ## Initialization variables
         self.acceleration = vec2(0, 0)
         self.max_velocity = 20
-        self.max_acceleration = 2.5
+        self.max_acceleration = self.maxAccel
         #random.seed(2)
         angle = random.uniform(0, 2*math.pi)
         speed = random.uniform(2,self.max_velocity)
         self.velocity = vec2(speed*math.cos(angle), speed*math.sin(angle))
-        self.position = vec2(x, y)
-        self.r = 2.0
+        self.r = 2.0 ## Pretty sure this is useless?
        
 
     def seek(self, target):
-        desired = target - self.position
+        desired = (target.position - self.position).wrap(self.bounds)
+
+        #################
+        #dx = abs(desired.x)
+        #if dx > self.width/2:
+        #    x = self.width - dx
+        #else:
+        #    x = desired.x
+        #dy = abs(desired.y)
+        #if dy > self.height/2:
+        #    y = self.height - dy
+        #else:
+        #    y = desired.y
+        #desired = vec2(x,y)
+        #################
+
         desired = desired.normalized()
         desired *= self.max_velocity
-        steer = desired - self.velocity
+        steer = (desired - self.velocity).wrap(self.bounds)
         steer = steer.limited(self.max_acceleration)
         return steer
 
@@ -54,7 +82,7 @@ class Boid:
     # Separation
     # Method checks for nearby boids and steers away
     def separate(self, boids):
-        desired_separation = 125.0
+        desired_separation = self.sepRadius
         steer = vec2(0, 0)
         count = 0
 
@@ -75,13 +103,13 @@ class Boid:
         ## RTM Edit
         # For every boid in the system, check if it's too close
         for other in boids:
-            d = (self.position - other.position).length()
+            d = (self.position - other.position).wrap(self.bounds).length()
             # If the distance is greater than 0 and less than an arbitrary
             # amount (0 when you are yourself)
             if 0 < d < desired_separation:
             # Calculate vector pointing away from neighbor
             #if 0 < d:
-                diff = self.position - other.position
+                diff = (self.position - other.position).wrap(self.bounds)
                 diff = diff.normalized()
                 steer += diff/d  # Weight by distance
                 count += 1       # Keep track of how many
@@ -104,7 +132,7 @@ class Boid:
     # Alignment
     # For every nearby boid in the system, calculate the average velocity
     def align(self, boids):
-        neighbor_dist = 250
+        neighbor_dist = self.alignCohRadius
         sum = vec2(0, 0)
         count = 0
         for other in boids:
@@ -118,7 +146,7 @@ class Boid:
             # Implement Reynolds: Steering = Desired - Velocity
             sum = sum.normalized()
             sum *= self.max_velocity
-            steer = sum - self.velocity
+            steer = (sum - self.velocity).wrap(self.bounds)
             steer = steer.limited(self.max_acceleration)
             return steer
         else:
@@ -128,17 +156,21 @@ class Boid:
     # For the average position (i.e. center) of all nearby boids, calculate
     # steering vector towards that position
     def cohesion(self, boids):
-        neighbor_dist = 250
+        neighbor_dist = self.alignCohRadius
         sum = vec2(0, 0)  # Start with empty vector to accumulate all positions
-        count = 0
-        for other in boids:
-            #d = (self.position - other.position).length()
-            #if 0 < d < neighbor_dist:
-            sum += other.position  # Add position
-            count += 1
+        #count = 0
+        count = len(boids)
         if count > 0:
-            sum /= count
-            return self.seek(sum)
+            for other in boids:
+                #d = (self.position - other.position).length()
+                #if 0 < d < neighbor_dist:
+                #################################
+                #sum += other.position  # Add position
+                #count += 1
+                #################################
+                target = self.seek(other)
+                sum += target/count
+            return sum
         else:
             return vec2(0, 0)
 
@@ -148,9 +180,9 @@ class Boid:
         coh = self.cohesion(boids)  # Cohesion
 
         # Arbitrarily weight these forces
-        sep *= 1.5
-        ali *= 1.0
-        coh *= 1.35
+        sep *= self.sepWeight
+        ali *= self.alignWeight
+        coh *= self.cohWeight
 
         # Add the force vectors to acceleration
         self.acceleration += sep
@@ -169,31 +201,22 @@ class Boid:
         self.acceleration = vec2(0, 0)
 
     def run(self, boids):
-        ## I think self.flock should become QuadTree??
         self.flock(boids)
         self.update()
-        #self.borders()
 
 
 class Flock:
-    def __init__(self, count=150, width=640, height=360):
+    def __init__(self, count, width, height, alignWeight, sepWeight, cohWeight, alignCohRadius, sepRadius, maxAccel):
         ## Uniform variables
-        self.count = 150
-        self.width = 3000
-        self.height = self.width
+        self.count = count
+        self.width = width
+        self.height = height
 
         ## Species variables
-####    [alignWeight,		## Weight of the alignment force
-####	 sepWeight,			## Weight of the separation force
-####	 cohWeight,			## Weight of the cohesion force
-####	 alignCohRadius,	## Radius for alignment/cohesion
-####	 sepRadius,			## Radius for separation
-####	 maxAccel,			## Maximum acceleration
-####	]
-        self.alignWeight = alignWeigth
+        self.alignWeight = alignWeight
         self.sepWeight = sepWeight
         self.cohWeight = cohWeight
-        self.alignCohRadius = alignCohRaidus
+        self.alignCohRadius = alignCohRadius
         self.sepRadius = sepRadius
         self.maxAccel = maxAccel
 
@@ -202,15 +225,16 @@ class Flock:
         self.frames = 0
         #random.seed(3)
         for i in range(count):
-            boid = Boid(random.uniform(-1,1)*width, random.uniform(-1,1)*height, width, height)
-            boid.width = width
-            boid.height = height
+            boid = Boid(random.uniform(-1,1)*width, random.uniform(-1,1)*height, width, height, alignWeight, sepWeight, cohWeight, alignCohRadius, sepRadius, maxAccel)
+            #boid.width = width
+            #boid.height = height
             self.boids.append(boid)
 
     def run(self,positions):
         #o_points = np.ndarray((len(self.boids),2), buffer=np.array(positions))
-        gsp = GriSPy(positions, periodic={0:(-self.width/2,self.width/2), 1:(-self.height/2,self.height/2)})
-        _, neighbor_indices = gsp.bubble_neighbors(positions,distance_upper_bound=250)
+        gsp = GriSPy(positions, N_cells = 100, periodic={0:(0,self.width), 1:(0,self.height)})
+        dub = max(self.alignCohRadius, self.sepRadius)
+        _, neighbor_indices = gsp.bubble_neighbors(positions,distance_upper_bound=dub)
         #for boid in self.boids:
         #    # Passing the entire list of boids to each boid individually
         #    this_boid = np.ndarray((1,2), buffer=np.array([boid.position.x,boid.position.y]))
@@ -232,30 +256,20 @@ class Flock:
             print("Time: "+str(self.elapsed))
             print("FPS: "+str(self.frames/self.elapsed.total_seconds()))
 
-    #def cohesion(self, boids):
-    #    P = np.zeros((len(boids),2))
-    #    for i, boid in enumerate(self.boids):
-    #        P[i] = boid.cohesion(self.boids)
-    #    return P
-
         
-
-            
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 ##random.seed(1)
 
-screen_width = 1420*2
-screen_height = 1020*2
+count=150
+screen_width = 5000
+screen_height = screen_width
+sample_species = [1.0, 1.0, 1.0, 250, 250, 10]
 
-#screen_width = 1000
-#screen_height = screen_width
-
-n=150
-flock = Flock(n, width=screen_width, height=screen_height)
-P = np.ndarray((n,2), buffer=np.array([(boid.position.x,boid.position.y) for boid in flock.boids]))
+flock = Flock(count, screen_width, screen_height, *sample_species)
+P = np.ndarray((count,2), buffer=np.array([(boid.position.x,boid.position.y) for boid in flock.boids]))
 
 def update(*args):
     flock.run(P)
@@ -268,7 +282,7 @@ def update(*args):
 
 
 
-fig = plt.figure(figsize=(screen_width/500, screen_height/500))
+fig = plt.figure()
 ax = fig.add_axes([0.0, 0.0, 1.0, 1.0], frameon=True)
 scatter = ax.scatter(P[:,0], P[:,1],
                      s=30, facecolor="red", edgecolor="None", alpha=0.5)

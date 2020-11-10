@@ -4,13 +4,14 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>262f4179-d3aa-4afb-929c-6c8282347783</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>BoidEvolution.py</StartupFile>
+    <StartupFile>BoidSim.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>BoidEvolution</Name>
     <RootNamespace>BoidEvolution</RootNamespace>
+    <InterpreterId>Global|VisualStudio|BoidEvolEnv</InterpreterId>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -23,6 +24,13 @@
   <ItemGroup>
     <Compile Include="BoidEvolution.py" />
     <Compile Include="BoidSim.py" />
+    <Compile Include="vec2.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="requirements.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="Global|VisualStudio|BoidEvolEnv" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
