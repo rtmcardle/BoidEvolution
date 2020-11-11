@@ -224,6 +224,7 @@ class Flock:
         dub = max(self.alignCohRadius, self.sepRadius)
         _, neighbor_indices = gsp.bubble_neighbors(positions,distance_upper_bound=dub)
         
+        ## Parallelize this
         for i in range(len(self.boids)):
             this_boid = self.boids[i]
             neighbors = [self.boids[j] for j in neighbor_indices[i]]
@@ -246,18 +247,23 @@ from matplotlib.animation import FuncAnimation
 ##random.seed(1)
 
 count=150
-screen_width = 2500
+screen_width = 3000
 screen_height = screen_width
 sample_species = [1.0, 1.5, 1.35, 200, 75, 2.5]
 
 flock = Flock(count, screen_width, screen_height, *sample_species)
 P = np.ndarray((count,2), buffer=np.array([(boid.position.x,boid.position.y) for boid in flock.boids]))
+V = np.ndarray((count,2), buffer=np.array([(boid.velocity.x,boid.velocity.y) for boid in flock.boids]))
 
 def update(*args):
     flock.run(P)
     for i,boid in enumerate(flock.boids):
         P[i] = boid.position
-    scatter.set_offsets(P)
+        V[i] = boid.velocity
+    #scatter.set_offsets(P)
+    arrows.set_offsets(P)
+    arrows.set_UVC(V[:,0], V[:,1])
+
 
 #while True:
 #    flock.run()
@@ -266,9 +272,9 @@ def update(*args):
 
 fig = plt.figure(figsize=(12.0,10.0))
 ax = fig.add_axes([0.0, 0.0, 1.0, 1.0], frameon=True)
-scatter = ax.scatter(P[:,0], P[:,1],
-                     s=30, facecolor="red", edgecolor="None", alpha=0.5)
-
+#scatter = ax.scatter(P[:,0], P[:,1],
+                     #s=30, facecolor="red", edgecolor="None", alpha=0.5)
+arrows = ax.quiver(P[:,0], P[:,1],V[:,0], V[:,1], scale = 2000, headaxislength=4.5, pivot = 'middle')
 animation = FuncAnimation(fig, update, interval=1)
 ax.set_xlim(0,screen_width)
 ax.set_ylim(0,screen_height)
