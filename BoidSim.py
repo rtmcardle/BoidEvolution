@@ -12,6 +12,7 @@ from joblib import Parallel, delayed
 from grispy import GriSPy
 from vec2 import vec2
 import multiprocessing
+import pandas as pd
 import numpy as np
 import datetime
 import random
@@ -80,6 +81,7 @@ class Boid:
                 steer += diff/d  # Weight by distance
                 count += 1       # Keep track of how many
 
+        self.nS = count
         # Average - divide by how many
         if count > 0:
             steer /= count
@@ -108,7 +110,7 @@ class Boid:
                 #sum += align
                 sum += other.velocity
                 count += 1
-
+        self.nAC = count
         if count > 0:
             sum /= count
             # Implement Reynolds: Steering = Desired - Velocity
@@ -140,20 +142,20 @@ class Boid:
 
 
     def flock(self, boids):
-        sep = self.separate(boids)  # Separation
-        ali = self.align(boids)  # Alignment
-        coh = self.cohesion(boids)  # Cohesion
+        self.sep = self.separate(boids)  # Separation
+        self.ali = self.align(boids)  # Alignment
+        self.coh = self.cohesion(boids)  # Cohesion
 
         # Arbitrarily weight these forces
-        sep *= self.sepWeight
-        ali *= self.alignWeight
-        coh *= self.cohWeight
+        self.sep *= self.sepWeight
+        self.ali *= self.alignWeight
+        self.coh *= self.cohWeight
 
         # Add the force vectors to acceleration
-        self.acceleration += sep
-        self.acceleration += ali
-        self.acceleration += coh
-        return sep+ali+coh
+        self.acceleration += self.sep
+        self.acceleration += self.ali
+        self.acceleration += self.coh
+        return self.sep+self.ali+self.coh
 
 
     def update(self,accel=None):
@@ -175,6 +177,19 @@ class Boid:
     def run(self, boids):
         self.flock(boids)
         self.update()
+        return (self.position.x,
+                self.position.y,
+                self.velocity.x,
+                self.velocity.y,
+                self.ali.x,
+                self.ali.y,
+                self.sep.x,
+                self.sep.y,
+                self.coh.x,
+                self.coh.y,
+                self.nAC,
+                self.nS,
+                )
 
 
 
@@ -225,17 +240,33 @@ class Flock:
             for i,boid in enumerate(self.boids):
                 self.P[i] = boid.position
                 self.V[i] = boid.velocity
+            self.instances.append([func(lst) for func in self.agg_funcs for lst in self.lists])
             arrows.set_offsets(self.P)
             arrows.set_UVC(self.V[:,0], self.V[:,1])
 
         self.start = datetime.datetime.now()
         self.frames = 0
         self.stop = False
+        ############################################
+        ## Prepares for data collection
+        #self.agg_funcs = ['min','max','mean','std',np.median]
+        self.agg_funcs = [np.min,np.max,np.mean,np.std,np.median]
+        self.agg_names = ['min','max','mean','std','median']
+        self.agg_labels = ['Min','Max','Mean','Std','Median']
+        self.base_names = ['xPos','yPos','xVel','yVel','xA','yA','xS','yS','xC','yC','nAC','nS']
+
+        self.dict_names = [base+column for base in self.base_names for column in self.agg_labels]
+        #dict_names.extend(['aligned','flocking','grouped'])
+
+        self.lists = [[] for _ in self.base_names]
+
+        self.instances = []
+        #######################################
 
         fig = plt.figure(figsize=(12.0,10.0))
         ax = fig.add_axes([0.0, 0.0, 1.0, 1.0], frameon=True)
         arrows = ax.quiver(self.P[:,0], self.P[:,1],self.V[:,0], self.V[:,1], scale = 2000, headaxislength=4.5, pivot = 'middle')
-        animation = FuncAnimation(fig, update, fargs=[parallel,], interval=1)
+        self.animation = FuncAnimation(fig, update, fargs=[parallel,], interval=1)
         ax.set_xlim(0,self.width)
         ax.set_ylim(0,self.height)
         ax.set_xticks([])
@@ -244,9 +275,26 @@ class Flock:
 
 
     def simulate(self,num_processes=1,par=False):
+        ## Initializes simulation
         self.start = datetime.datetime.now()
         self.frames = 0
         self.stop = False
+
+        ## Prepares for data collection
+        #self.agg_funcs = ['min','max','mean','std',np.median]
+        self.agg_funcs = [np.min,np.max,np.mean,np.std,np.median]
+        self.agg_names = ['min','max','mean','std','median']
+        self.agg_labels = ['Min','Max','Mean','Std','Median']
+        self.base_names = ['xPos','yPos','xVel','yVel','xA','yA','xS','yS','xC','yC','nAC','nS']
+
+        self.dict_names = [base+column for base in self.base_names for column in self.agg_labels]
+        #dict_names.extend(['aligned','flocking','grouped'])
+
+        self.lists = [[] for _ in self.base_names]
+
+        self.instances = []
+
+        ## Main simulation loops
         if par:
             with Parallel(n_jobs = num_processes, prefer='threads', verbose=0) as parallel:
                 while not self.stop:
@@ -258,6 +306,19 @@ class Flock:
                 self.run(self.P,num_processes,par,)
                 for i,boid in enumerate(self.boids):
                     self.P[i] = boid.position
+
+                    #self.Px[i] = boid.position.x
+                    #self.Py[i] = boid.position.y
+                    #self.Vx[i] = boid.velocity.x
+                    #self.Vy[i] = boid.velocity.y
+                    #self.A[i] = boid.ali
+                    #self.S[i] = boid.sep
+                    #self.C[i] = boid.coh
+                    #self.nAC[i] = boid.nAC
+                    #self.nS[i] = boid.nS
+
+                ## Run the aggregate functions and save to a list
+                self.instances.append([func(lst) for func in self.agg_funcs for lst in self.lists])
         
         
     def run(self,positions,num_processes,parallel=False,):
@@ -272,7 +333,10 @@ class Flock:
             for i in range(len(self.boids)):
                 this_boid = self.boids[i]
                 neighbors = [self.boids[j] for j in self.neighbor_indices[i]]
-                this_boid.run(neighbors)
+                ret_atts = this_boid.run(neighbors)
+                for i,att in enumerate(ret_atts):
+                    self.lists[i].append(att)
+
         else:
             #print("PARALLEL")
             self.accels = parallel(delayed(self.parallel_flock)(i) for i in range(len(self.boids)))
@@ -300,14 +364,28 @@ class Flock:
             #print("FINISHED")
         #######################################################
 
+
         ### Manages the number of instances calculated and 
         ### halting criteria.
         self.frames+=1
+        print(self.frames)
         if self.frames==100:
+            ## Save the record
+            simulation_record = pd.DataFrame(self.instances, columns=self.dict_names)
+            print(simulation_record)
+            simulation_record.to_csv('./simulation_record.csv')
+
+            ## Report the frame/instance rate
             self.end = datetime.datetime.now()
             self.elapsed = self.end-self.start
             print("Time: "+str(self.elapsed))
             print("FPS: "+str(self.frames/self.elapsed.total_seconds()))
+
+            ## Stop the animation
+            try:
+                self.animation.event_source.stop()
+            except:
+                pass
             self.stop = True
 
 
