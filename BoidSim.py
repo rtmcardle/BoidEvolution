@@ -8,17 +8,14 @@
 #
 # -----------------------------------------------------------------------------
 
-import math
-import random
-import datetime
-import threading
+from joblib import Parallel, delayed
+from grispy import GriSPy
+from vec2 import vec2
 import multiprocessing
 import numpy as np
-from vec2 import vec2
-from joblib import Parallel, delayed
-
-from grispy import GriSPy
-
+import datetime
+import random
+import math
 
 class Boid:
     def __init__(self, x, y, width, height, alignWeight, sepWeight, cohWeight, alignCohRadius, sepRadius, maxAccel):
@@ -41,11 +38,9 @@ class Boid:
         self.acceleration = vec2(0, 0)
         self.max_velocity = 20
         self.max_acceleration = self.maxAccel
-        #random.seed(2)
         angle = random.uniform(0, 2*math.pi)
         speed = random.uniform(2,self.max_velocity)
         self.velocity = vec2(speed*math.cos(angle), speed*math.sin(angle))
-        self.r = 2.0 ## Pretty sure this is useless?
        
 
     def seek(self, target):
@@ -56,15 +51,13 @@ class Boid:
         steer = steer.limited(self.max_acceleration)
         return steer
 
+
     # Wraparound
     def borders(self):
         x, y = self.position
         x = x % self.width
         y = y % self.height
         self.position = vec2(x,y)
-
-        #self.position.x = self.position.x % self.width
-        #self.position.y = self.position.y % self.height
 
 
     # Separation
@@ -74,21 +67,6 @@ class Boid:
         steer = vec2(0, 0)
         count = 0
 
-        #######################################################
-        ## Original
-        ## For every boid in the system, check if it's too close
-        #for other in boids:
-        #    d = (self.position - other.position).length()
-        #    # If the distance is greater than 0 and less than an arbitrary
-        #    # amount (0 when you are yourself)
-        #    if 0 < d < desired_separation:
-        #        # Calculate vector pointing away from neighbor
-        #        diff = self.position - other.position
-        #        diff = diff.normalized()
-        #        steer += diff/d  # Weight by distance
-        #        count += 1       # Keep track of how many
-        #######################################################
-        ## RTM Edit
         # For every boid in the system, check if it's too close
         for other in boids:
             d = (self.position - other.position).wrap(self.bounds).length()
@@ -101,7 +79,6 @@ class Boid:
                 diff = diff.normalized()
                 steer += diff/d  # Weight by distance
                 count += 1       # Keep track of how many
-
 
         # Average - divide by how many
         if count > 0:
@@ -116,6 +93,7 @@ class Boid:
             steer = steer.limited(self.max_acceleration)
 
         return steer
+
 
     # Alignment
     # For every nearby boid in the system, calculate the average velocity
@@ -142,6 +120,7 @@ class Boid:
         else:
             return vec2(0, 0)
 
+
     # Cohesion
     # For the average position (i.e. center) of all nearby boids, calculate
     # steering vector towards that position
@@ -149,21 +128,16 @@ class Boid:
         neighbor_dist = self.alignCohRadius
         sum = vec2(0, 0)  # Start with empty vector to accumulate all positions
         count = 0
-        #count = len(boids)
-        #if count > 0:
         for other in boids:
             d = (self.position - other.position).wrap(self.bounds).length()
             if 0 < d < neighbor_dist:
-            #################################
-            #sum += other.position  # Add position
-            #count += 1
-            #################################
                 target = self.seek(other)
                 sum += target
         if count > 0:
             return sum/count
         else:
             return vec2(0, 0)
+
 
     def flock(self, boids):
         sep = self.separate(boids)  # Separation
@@ -181,8 +155,8 @@ class Boid:
         self.acceleration += coh
         return sep+ali+coh
 
+
     def update(self,accel=None):
-        #print("Boids Update")
         # Update velocity
         if accel is not None:
             self.acceleration = accel
@@ -197,9 +171,11 @@ class Boid:
 
         return self
 
+
     def run(self, boids):
         self.flock(boids)
         self.update()
+
 
 
 class Flock:
@@ -218,131 +194,115 @@ class Flock:
         self.maxAccel = maxAccel
 
         ## Initializes simulation
+        random.seed(random.randint(0,1e10))
         self.boids = []
+
+        ## Generates swarm of boids
+        self.boids = [Boid(random.uniform(-1,1)*width, 
+                           random.uniform(-1,1)*height, 
+                           width, 
+                           height, 
+                           alignWeight, 
+                           sepWeight, 
+                           cohWeight, 
+                           alignCohRadius, 
+                           sepRadius, 
+                           maxAccel,) 
+                      for _ in range(count)
+                      ]
+
+        self.P = np.ndarray((count,2), buffer=np.array([(boid.position.x,boid.position.y) for boid in self.boids]))
+        self.V = np.ndarray((count,2), buffer=np.array([(boid.velocity.x,boid.velocity.y) for boid in self.boids]))
+        #self.n = self.count//num_processes
+
+
+    def animate(self,num_processes=1,parallel=None):
+        import matplotlib.pyplot as plt
+        from matplotlib.animation import FuncAnimation
+
+        def update(*args):
+            self.run(self.P,num_processes,parallel,)
+            for i,boid in enumerate(self.boids):
+                self.P[i] = boid.position
+                self.V[i] = boid.velocity
+            arrows.set_offsets(self.P)
+            arrows.set_UVC(self.V[:,0], self.V[:,1])
+
         self.start = datetime.datetime.now()
         self.frames = 0
         self.stop = False
-        #random.seed(3)
-        #self.num_cores = multiprocessing.cpu_count()
-        #self.processes = 8
-        #print(f'Cores: {num_cores}')
-        #self.lock = threading.Lock()
 
-        ## Generates swarm of boids
-        for i in range(count):
-            boid = Boid(random.uniform(-1,1)*width, random.uniform(-1,1)*height, width, height, alignWeight, sepWeight, cohWeight, alignCohRadius, sepRadius, maxAccel)
-            self.boids.append(boid)
+        fig = plt.figure(figsize=(12.0,10.0))
+        ax = fig.add_axes([0.0, 0.0, 1.0, 1.0], frameon=True)
+        arrows = ax.quiver(self.P[:,0], self.P[:,1],self.V[:,0], self.V[:,1], scale = 2000, headaxislength=4.5, pivot = 'middle')
+        animation = FuncAnimation(fig, update, fargs=[parallel,], interval=1)
+        ax.set_xlim(0,self.width)
+        ax.set_ylim(0,self.height)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        plt.show()
 
-        self.n = self.count//num_processes
+
+    def simulate(self,num_processes=1,par=False):
+        self.start = datetime.datetime.now()
+        self.frames = 0
+        self.stop = False
+        if par:
+            with Parallel(n_jobs = num_processes, prefer='threads', verbose=0) as parallel:
+                while not self.stop:
+                    self.run(self.P,num_processes,parallel,)
+                    for i,boid in enumerate(self.boids):
+                        self.P[i] = boid.position
+        else:
+            while not self.stop:
+                self.run(self.P,num_processes,par,)
+                for i,boid in enumerate(self.boids):
+                    self.P[i] = boid.position
         
         
+    def run(self,positions,num_processes,parallel=False,):
 
-    def run(self,positions,num_processes,parallel=None,):
-        gsp = GriSPy(positions, N_cells = 5, periodic={0:(0,self.width), 1:(0,self.height)})
+        ### Builds gridsearch and finds nearby neighbors
+        gsp = GriSPy(positions, N_cells = 10, periodic={0:(0,self.width), 1:(0,self.height)})
         dub = max(self.alignCohRadius, self.sepRadius)
         _, self.neighbor_indices = gsp.bubble_neighbors(positions,distance_upper_bound=dub)
 
-        
-        ### Splits flock for multiprocessing
-        self.flocks = [self.boids[i:i+self.n] for i in range(0,self.count,self.n)]
-        self.n_i = [self.neighbor_indices[i:i+self.n] for i in range(0,self.count,self.n)]
-        ## Parallelize this
-
-        #print("PARALLEL ELIF")
-        if parallel==None:
+        ### Breaks off code for single vs. multiprocessing
+        if not parallel:
             for i in range(len(self.boids)):
                 this_boid = self.boids[i]
                 neighbors = [self.boids[j] for j in self.neighbor_indices[i]]
                 this_boid.run(neighbors)
-        elif type(parallel) == type(Parallel()):
+        else:
             #print("PARALLEL")
             self.accels = parallel(delayed(self.parallel_flock)(i) for i in range(len(self.boids)))
             self.boids = parallel(delayed(self.parallel_update)(i) for i in range(len(self.boids)))
+
+        #######################################################
+        #######################################################
+        ###
+        ### A Pooling method is written, but often destabilizes
+        ### system. Run as is at your own risk, and only if 
+        ### attempting to patch multiprocessing.
+        ###
+        #######################################################
+        #######################################################
         #elif type(parallel) == type(multiprocessing.Pool()):
         #    pass
-        #    print("POOL")
-        #    accel_results = parallel.map_async(self.pool_flock, range(len(self.flocks)))
-        #    self.accels = accel_results.get()
-        #    boid_result = parallel.map_async(self.pool_update, range(len(self.flocks)))
-        #    self.boids = [boid for sublist in boid_result.get() for boid in sublist]
-        #    print("FINISHED")
+            #print("POOL")
+            #self.flocks = [self.boids[i:i+self.n] for i in range(0,self.count,self.n)]
+            #self.n_i = [self.neighbor_indices[i:i+self.n] for i in range(0,self.count,self.n)]
+            ## Parallelize this
+            ##accel_results = parallel.map(self.pool_flock, range(len(self.flocks)))
+            #self.accels = [accel for sublist in accel_results for accel in sublist]
+            #boid_result = parallel.map(self.pool_update, range(len(self.flocks)))
+            #self.boids = [boid for sublist in boid_result for boid in sublist]
+            #print("FINISHED")
+        #######################################################
 
-        
-
-        #### Splits flock for multiprocessing
-        #n = self.count//self.processes
-        #self.flocks = [self.boids[i:i+n] for i in range(0,self.count,n)]
-        #self.n_i = [self.neighbor_indices[i:i+n] for i in range(0,self.count,n)]
-        #self.accels=[]
-        #self.ret_boids=[]
-
-        #inputs = self.boids
-        #self.accels = Parallel(n_jobs=self.processes, prefer='threads')(delayed(self.pool_flock)(i) for i in range(len(self.flocks)))
-        #self.ret_boids = Parallel(n_jobs=self.processes, prefer='threads')(delayed(self.pool_update)(i) for i in range(len(self.flocks)))
-        
-        ##############################################
-        
-        #self.accels = parallel(delayed(self.parallel_flock)(i) for i in range(len(self.boids)))
-        #self.boids = parallel(delayed(self.parallel_update)(i) for i in range(len(self.boids)))
-        
-        ###############################################
-
-        #self.accels = parallel(delayed(self.pool_flock)(i) for i in range(len(self.flocks)))
-        #self.ret_boids = parallel(delayed(self.pool_update)(i) for i in range(len(self.flocks)))
-        #self.boids = [boid for sublist in self.ret_boids for boid in sublist]
-
-        ################################################
-
-        #accel_results = parallel.map_async(self.pool_flock, range(len(self.flocks)))
-        #self.accels = accel_results.get()
-        #boid_result = parallel.map_async(self.pool_update, range(len(self.flocks)))
-        #self.boids = [boid for sublist in boid_result.get() for boid in sublist]
-
-        ##################################################
-
-        #if __name__ == '__main__':
-        #    with multiprocessing.Pool(4) as pool:
-        #        _ = pool.map(self.parallel_flock, range(len(self.boids)))
-        #    with multiprocessing.Pool(4) as pool:
-        #        _ = pool.map(self.parallel_update, range(len(self.boids)))
-
-        
-
-        #with multiprocessing.Pool(self.processes) as pool:
-        #    self.accels = pool.map(self.pool_flock, range(len(self.flocks)))
-        #    self.boids = [boid for sublist in pool.map(self.pool_update, range(len(self.flocks))) for boid in sublist]
-
-        #print(f"ParallelBoids: {self.parallel_boids}")
-        #self.boids = [*self.parallel_boids]
-
-        
-
-        #processes = []
-        #tasks_to_accomplish = multiprocessing.Queue()
-        #tasks_completed = multiprocessing.Queue()
-        #for i in range(n):
-        #    tasks_to_accomplish.put("task" + str(i))
-
-        #for w in range(self.processes):
-        #    p = multiprocessing.Process(target=self.pool_flock, args=(i,))
-        #    processes.append(p)
-        #    p.start()
-        #for job in processes:
-        #    job.join()
-
-        #processes = []
-        #for i in range(self.count):
-        #    p = multiprocessing.Process(target=self.pool_update, args=(i,))
-        #    processes.append(p)
-        #    p.start()
-        #for job in processes:
-        #    job.join()
-
-
-
-
+        ### Manages the number of instances calculated and 
+        ### halting criteria.
         self.frames+=1
-
         if self.frames==100:
             self.end = datetime.datetime.now()
             self.elapsed = self.end-self.start
@@ -350,53 +310,40 @@ class Flock:
             print("FPS: "+str(self.frames/self.elapsed.total_seconds()))
             self.stop = True
 
+
     def parallel_flock(self,i):
         this_boid = self.boids[i]
         neighbors = [self.boids[j] for j in self.neighbor_indices[i]]
         return this_boid.flock(neighbors)
 
+
     def parallel_update(self,i):
         this_boid = self.boids[i]
-        
-        #if i == 0:
-        #    print(f"P[0]: {this_boid.position}")
         return this_boid.update(self.accels[i])
 
-    def pool_flock(self,i):
-        ret_accels = []
-        this_flock = self.flocks[i]
-        #for j in range(len(this_flock)):
-        #    this_boid = this_flock[j]
-        #    neighbors = [self.boids[k] for k in self.n_i[i][j]]
-        #    ret_accels.append(this_boid.flock(neighbors))
-        ret_accels = [this_flock[j].flock([self.boids[k] for k in self.n_i[i][j]]) for j in range(len(this_flock))]
-        #this_boid = self.boids[i]
-        #neighbors = [self.boids[j] for j in self.neighbor_indices[i]]
-        #self.accels.append(ret_accels)
-        return ret_accels
 
-    def pool_update(self,i):
-        #ret_boids = []
-        this_flock = self.flocks[i]
-        #for j in range(len(this_flock)):
-        #    this_boid = this_flock[j]
-        #    this_boid.update(self.accels[i][j])
-        #    ret_boids.append(this_boid)
-        ret_boids = [this_flock[j].update(self.accels[i][j]) for j in range(len(this_flock))]
-        #if i == 0:
-        #    print(f"P[0]: {this_boid.position}")
-        #self.ret_boids.append(ret_boids)
-        return ret_boids
+    ###########################################################
+    ###
+    ### The following two methods were intended for the pooling
+    ### multiprocessing method. Unnecessary for the single 
+    ### processing implementation.
+    ###
+    ###########################################################
+    #def pool_flock(self,i):
+    #    ret_accels = []
+    #    this_flock = self.flocks[i]
+    #    ret_accels = [this_flock[j].flock([self.boids[k] for k in self.n_i[i][j]]) for j in range(len(this_flock))]
+    #    return ret_accels
 
+    #def pool_update(self,i):
+    #    this_flock = self.flocks[i]
+    #    ret_boids = [this_flock[j].update(self.accels[len(this_flock)*i+j]) for j in range(len(this_flock))]
+    #    return ret_boids
+    ###########################################################
 
 
 
 def main():        
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from matplotlib.animation import FuncAnimation
-
-    ##random.seed(1)
 
     count=150
     screen_width = 3000
@@ -407,67 +354,17 @@ def main():
     num_processes = num_cores//2
 
     flock = Flock(num_processes, count, screen_width, screen_height, *sample_species)
-    P = np.ndarray((count,2), buffer=np.array([(boid.position.x,boid.position.y) for boid in flock.boids]))
-    V = np.ndarray((count,2), buffer=np.array([(boid.velocity.x,boid.velocity.y) for boid in flock.boids]))
-
-    def update(*args):
-        #print(f'Update')
-        flock.run(P,num_processes,parallel,)
-        for i,boid in enumerate(flock.boids):
-            #print(boid)
-            P[i] = boid.position
-            V[i] = boid.velocity
-        #scatter.set_offsets(P)
-        #print(f"P[0]: {P[0]}")
-        arrows.set_offsets(P)
-        arrows.set_UVC(V[:,0], V[:,1])
-
-
-    ## Standard Run
-    while not flock.stop:
-        flock.run(P,num_processes,)
-        for i,boid in enumerate(flock.boids):
-            #print(boid)
-                P[i] = boid.position
-
-    ## Parallel Run
-    flock = Flock(num_processes, count, screen_width, screen_height, *sample_species)
-    P = np.ndarray((count,2), buffer=np.array([(boid.position.x,boid.position.y) for boid in flock.boids]))
-    V = np.ndarray((count,2), buffer=np.array([(boid.velocity.x,boid.velocity.y) for boid in flock.boids]))
     
-    with Parallel(n_jobs = num_processes, prefer='threads', verbose=0) as parallel:
-        #print("STARTING")
-        while not flock.stop:
-            flock.run(P,num_processes,parallel,)
-            for i,boid in enumerate(flock.boids):
-            #print(boid)
-                P[i] = boid.position
+    ### Run a visualization of the boids
+    flock.animate()
 
-    ### Pool Run
-    #flock = Flock(num_processes, count, screen_width, screen_height, *sample_species)
-    #P = np.ndarray((count,2), buffer=np.array([(boid.position.x,boid.position.y) for boid in flock.boids]))
-    #V = np.ndarray((count,2), buffer=np.array([(boid.velocity.x,boid.velocity.y) for boid in flock.boids]))
-    #with multiprocessing.Pool(num_processes) as parallel:
-    #    while not flock.stop:
-    #        flock.run(P,num_processes,parallel)
-    #        for i,boid in enumerate(flock.boids):
-    #        #print(boid)
-    #            P[i] = boid.position
+    ### Simulate and produce data
+    #flock.simulate()
+
+    ### Simulate and procude data w/ multiprocessing
+    #flock.simulate(num_processes=num_processes, par=True)
 
 
-    ### Visualization
-    #fig = plt.figure(figsize=(12.0,10.0))
-    #ax = fig.add_axes([0.0, 0.0, 1.0, 1.0], frameon=True)
-    ##scatter = ax.scatter(P[:,0], P[:,1],
-    #                     #s=30, facecolor="red", edgecolor="None", alpha=0.5)
-    #arrows = ax.quiver(P[:,0], P[:,1],V[:,0], V[:,1], scale = 2000, headaxislength=4.5, pivot = 'middle')
-    #animation = FuncAnimation(fig, update, fargs=[parallel,], interval=1)
-    #ax.set_xlim(0,screen_width)
-    #ax.set_ylim(0,screen_height)
-    #ax.set_xticks([])
-    #ax.set_yticks([])
-    #plt.show()
-
-
+    
 if __name__ == '__main__':
     main()
