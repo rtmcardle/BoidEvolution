@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>262f4179-d3aa-4afb-929c-6c8282347783</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>BoidSim.py</StartupFile>
+    <StartupFile>BoidEvolution.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>

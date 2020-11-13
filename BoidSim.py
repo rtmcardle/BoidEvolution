@@ -241,8 +241,8 @@ class Flock:
             for i,boid in enumerate(self.boids):
                 self.P[i] = boid.position
                 self.V[i] = boid.velocity
-            agg_lists = [lst for lst in self.lists]
-            self.instances.append([func(lst) for lst in self.lists for func in self.agg_funcs])
+            if self.record == True:
+                self.instances.append([func(lst) for lst in self.lists for func in self.agg_funcs])
             arrows.set_offsets(self.P)
             arrows.set_UVC(self.V[:,0], self.V[:,1])
 
@@ -281,6 +281,7 @@ class Flock:
         self.start = datetime.datetime.now()
         self.frames = 0
         self.stop = False
+        self.record = False
 
         ## Prepares for data collection
         #self.agg_funcs = ['min','max','mean','std',np.median]
@@ -292,7 +293,7 @@ class Flock:
         self.dict_names = [base+column for base in self.base_names for column in self.agg_labels]
         #dict_names.extend(['aligned','flocking','grouped'])
 
-        self.lists = [[] for _ in self.base_names]
+        #self.lists = [[] for _ in self.base_names]
 
         self.instances = []
 
@@ -300,11 +301,13 @@ class Flock:
         if par:
             with Parallel(n_jobs = num_processes, prefer='threads', verbose=0) as parallel:
                 while not self.stop:
+                    self.lists = [[] for _ in self.base_names]
                     self.run(self.P,num_processes,parallel,)
                     for i,boid in enumerate(self.boids):
                         self.P[i] = boid.position
         else:
             while not self.stop:
+                self.lists = [[] for _ in self.base_names]
                 self.run(self.P,num_processes,par,)
                 for i,boid in enumerate(self.boids):
                     self.P[i] = boid.position
@@ -320,11 +323,30 @@ class Flock:
                     #self.nS[i] = boid.nS
 
                 ## Run the aggregate functions and save to a list
-                agg_lists = [lst for lst in self.lists]
-                self.instances.append([func(lst) for func in self.agg_funcs for lst in self.lists])
+                if self.record == True:
+                    self.instances.append([func(lst) for lst in self.lists for func in self.agg_funcs])
+        
+        ## Save the record
+        self.simulation_record = pd.DataFrame(self.instances, columns=self.dict_names)
+        #timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S.%f')
+        #print(simulation_record)
+        #self.simulation_record.to_csv('./simulation_record.csv')
+
+        ## Report the frame/instance rate
+        self.end = datetime.datetime.now()
+        self.elapsed = self.end-self.start
+        print("Time: "+str(self.elapsed))
+        print("FPS: "+str(self.frames/self.elapsed.total_seconds()))
+
+        ## Stop the animation
+        try:
+            self.animation.event_source.stop()
+        except:
+            pass
+        return self.simulation_record
         
         
-    def run(self,positions,num_processes,parallel=False,):
+    def run(self,positions,num_processes,parallel=False,delay=50,length=100):
 
         ### Builds gridsearch and finds nearby neighbors
         gsp = GriSPy(positions, N_cells = 10, periodic={0:(0,self.width), 1:(0,self.height)})
@@ -371,24 +393,10 @@ class Flock:
         ### Manages the number of instances calculated and 
         ### halting criteria.
         self.frames+=1
-        print(self.frames)
-        if self.frames==100:
-            ## Save the record
-            simulation_record = pd.DataFrame(self.instances, columns=self.dict_names)
-            print(simulation_record)
-            simulation_record.to_csv('./simulation_record.csv')
-
-            ## Report the frame/instance rate
-            self.end = datetime.datetime.now()
-            self.elapsed = self.end-self.start
-            print("Time: "+str(self.elapsed))
-            print("FPS: "+str(self.frames/self.elapsed.total_seconds()))
-
-            ## Stop the animation
-            try:
-                self.animation.event_source.stop()
-            except:
-                pass
+        #print(self.frames)
+        if self.frames == delay:
+            self.record = True
+        if self.frames == delay+length:
             self.stop = True
 
 
