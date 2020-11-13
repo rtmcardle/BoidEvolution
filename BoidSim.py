@@ -135,6 +135,7 @@ class Boid:
             if 0 < d < neighbor_dist:
                 target = self.seek(other)
                 sum += target
+                count += 1
         if count > 0:
             return sum/count
         else:
@@ -240,7 +241,8 @@ class Flock:
             for i,boid in enumerate(self.boids):
                 self.P[i] = boid.position
                 self.V[i] = boid.velocity
-            self.instances.append([func(lst) for func in self.agg_funcs for lst in self.lists])
+            agg_lists = [lst for lst in self.lists]
+            self.instances.append([func(lst) for lst in self.lists for func in self.agg_funcs])
             arrows.set_offsets(self.P)
             arrows.set_UVC(self.V[:,0], self.V[:,1])
 
@@ -318,6 +320,7 @@ class Flock:
                     #self.nS[i] = boid.nS
 
                 ## Run the aggregate functions and save to a list
+                agg_lists = [lst for lst in self.lists]
                 self.instances.append([func(lst) for func in self.agg_funcs for lst in self.lists])
         
         
