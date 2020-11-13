@@ -23,8 +23,14 @@
 ####	]
 ####
 ###############################################################
+from BoidSim import Flock
+
 from joblib import load
 import os
+import sklearn
+import multiprocessing
+import numpy as np
+
 
 
 class BoidEvolution():
@@ -71,7 +77,7 @@ class BoidEvolution():
 		self.classifiers = [self.alignedClass, self.flockingClass, self.groupedClass]
 
 
-	def boidFitness(self,species):
+	def boidFitness(self,species=[1.0, 1.5, 1.35, 200, 75, 2.5]):
 		"""
 		Simulate the species of boid and return the fitness 
 		valuation for the run.
@@ -82,21 +88,32 @@ class BoidEvolution():
 		"""
 
 		## Run the boid simulation
+		count=150
+		screen_width = 3000
+		screen_height = screen_width
+		num_cores = multiprocessing.cpu_count()
+		num_processes = num_cores//2
 
-		## Load the simulation saved data
+		swarm = Flock(num_processes, count, screen_width, screen_height, *species)
 
-		## For each instance 
-		#		Classify the instance
-		#		if classified as (1,1,1)
-		#			add 1 to the fitness
-		########
-		#	Note: we may want to add 1 for each class 
-		#	positively classified, and perhaps weight Flocking 
-		#	(middle class) more heavily. Would allow higher 
-		#	resolution to fitness.
-		########
+		saved_data = swarm.simulate()
 
-		## Return the fitness value for the species
+
+		## Classify the instances and calculate fitness
+		max_fit = 4 * len(saved_data.index)
+		fit_weights = [1,2,1]
+
+		classes = [classifier.predict(saved_data) for classifier in self.classifiers]
+
+		## Am hoping to provide a 1-point bonus to 'perfect' instances 
+		#bonus = [1  if (np.sum(classes[:][i]) == 4) else 0 for i in range(100)]
+
+		fits = np.dot(fit_weights,classes)
+
+		fitness = np.sum(fits)/max_fit
+
+		return fitness
+
 
 
 	def evolveSteady(self):
@@ -185,3 +202,13 @@ class BoidEvolution():
 		########
 
 		## Return the evolved species and its fitness
+
+def main():
+	evolution = BoidEvolution()
+	evolution.loadClassifiers()
+	fit = evolution.boidFitness()
+	print(f"Sample Species Fitness: {fit}")
+
+
+if __name__ == '__main__':
+	main()
