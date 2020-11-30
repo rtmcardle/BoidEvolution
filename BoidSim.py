@@ -336,10 +336,10 @@ class Flock:
         #self.simulation_record.to_csv('./simulation_record.csv')
 
         ## Report the frame/instance rate
-        self.end = datetime.datetime.now()
-        self.elapsed = self.end-self.start
-        print("Time: "+str(self.elapsed))
-        print("FPS: "+str(self.frames/self.elapsed.total_seconds()))
+        #self.end = datetime.datetime.now()
+        #self.elapsed = self.end-self.start
+        #print("Time: "+str(self.elapsed))
+        #print("FPS: "+str(self.frames/self.elapsed.total_seconds()))
 
         ## Stop the animation
         try:
