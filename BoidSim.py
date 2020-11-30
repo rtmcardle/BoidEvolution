@@ -195,7 +195,7 @@ class Boid:
 
 
 class Flock:
-    def __init__(self, num_processes, count, width, height, alignWeight, sepWeight, cohWeight, alignCohRadius, sepRadius, maxAccel):
+    def __init__(self, seed, count, width, height, alignWeight, sepWeight, cohWeight, alignCohRadius, sepRadius, maxAccel):
         ## Uniform variables
         self.count = count
         self.width = width
@@ -210,7 +210,7 @@ class Flock:
         self.maxAccel = maxAccel
 
         ## Initializes simulation
-        random.seed(random.randint(0,1e10))
+        random.seed(seed)
         self.boids = []
 
         ## Generates swarm of boids
@@ -237,6 +237,8 @@ class Flock:
         from matplotlib.animation import FuncAnimation
 
         def update(*args):
+            if self.stop:
+                self.animation.event_source.stop()
             self.run(self.P,num_processes,parallel,)
             for i,boid in enumerate(self.boids):
                 self.P[i] = boid.position
@@ -249,6 +251,7 @@ class Flock:
         self.start = datetime.datetime.now()
         self.frames = 0
         self.stop = False
+        self.record = False
         ############################################
         ## Prepares for data collection
         #self.agg_funcs = ['min','max','mean','std',np.median]

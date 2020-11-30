@@ -25,11 +25,13 @@
 ###############################################################
 from BoidSim import Flock
 
-from joblib import load
+from joblib import load, Parallel, delayed
 import os
 import sklearn
-import multiprocessing
+import multiprocessing as mp
 import numpy as np
+import random
+
 
 
 
@@ -77,24 +79,24 @@ class BoidEvolution():
 		self.classifiers = [self.alignedClass, self.flockingClass, self.groupedClass]
 
 
-	def boidFitness(self,species=[1.0, 1.5, 1.35, 200, 75, 2.5]):
+	def boidFitness(self, species=[1.0, 1.5, 1.35, 200, 75, 2.5], seed=0):
 		"""
 		Simulate the species of boid and return the fitness 
-		valuation for the run.
+		valuation.
 
 		:param species: A list which specifies the parameters 
 			that define a given species of boid.
-		:return: the evaluated fitness
+		:return: the evaluated fitness value
 		"""
 
 		## Run the boid simulation
 		count=150
 		screen_width = 3000
 		screen_height = screen_width
-		num_cores = multiprocessing.cpu_count()
-		num_processes = num_cores//2
+		#seed = random.randint(1,1e10)		
+		#seed = 10
 
-		swarm = Flock(num_processes, count, screen_width, screen_height, *species)
+		swarm = Flock(seed, count, screen_width, screen_height, *species)
 
 		saved_data = swarm.simulate()
 
@@ -113,6 +115,39 @@ class BoidEvolution():
 		fitness = np.sum(fits)/max_fit
 
 		return fitness
+
+	def listFitness(self,species_list=[[1.0, 1.5, 1.35, 200.0, 75.0, 2.5],[1.2, 1.1, 1.5, 100.0, 150.0, 5.0]]*10):
+		"""
+		Parallelizes the evaluation of multiple fitness functions 
+		for each of the species of boid included in species_list
+
+		:param species_list: the list of boid species whose 
+			fitness is to be evaluated
+		:return: the coresponding list of fitnesses
+		"""
+
+		## Define a seed to evaluate new species on same 
+		#	initial conditions
+		seed = random.randint(1,1e10)
+
+		## Determine the number of processors to use
+		num_cores = mp.cpu_count()
+		num_processes = num_cores-2 if num_cores-2>=2 else 1 
+
+		if num_processes != 1:
+			## Run in parallel
+			if __name__=="__main__":
+				## Pool option
+				pool = mp.Pool(num_processes)
+				fitnesses = pool.starmap(self.boidFitness, [(boid,seed) for boid in species_list])
+				pool.close()
+				## Parallel option
+				#fitnesses = Parallel(n_jobs=num_processes)(delayed(self.boidFitness)(boid) for boid in species_list)
+		else:
+			## Run in linear
+			fitnesses = [self.boidFitness(boid) for boid in species_list]
+
+		return fitnesses
 
 
 
@@ -206,8 +241,8 @@ class BoidEvolution():
 def main():
 	evolution = BoidEvolution()
 	evolution.loadClassifiers()
-	fit = evolution.boidFitness()
-	print(f"Sample Species Fitness: {fit}")
+	fit = evolution.listFitness()
+	print(f"Sample Species Fitnesses: {fit}")
 
 
 if __name__ == '__main__':
