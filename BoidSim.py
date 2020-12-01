@@ -11,7 +11,6 @@
 from joblib import Parallel, delayed
 from grispy import GriSPy
 from vec2 import vec2
-import multiprocessing
 import pandas as pd
 import numpy as np
 import datetime
@@ -147,7 +146,7 @@ class Boid:
         self.ali = self.align(boids)  # Alignment
         self.coh = self.cohesion(boids)  # Cohesion
 
-        # Arbitrarily weight these forces
+        # Weights determined by species of boid
         self.sep *= self.sepWeight
         self.ali *= self.alignWeight
         self.coh *= self.cohWeight
@@ -227,51 +226,53 @@ class Flock:
                       for _ in range(count)
                       ]
 
+        ## Sets position and velocity arrays
         self.P = np.ndarray((count,2), buffer=np.array([(boid.position.x,boid.position.y) for boid in self.boids]))
         self.V = np.ndarray((count,2), buffer=np.array([(boid.velocity.x,boid.velocity.y) for boid in self.boids]))
-        #self.n = self.count//num_processes
 
 
-    def animate(self,num_processes=1,parallel=None):
+    def animate(self,end=True,record=True):
         import matplotlib.pyplot as plt
         from matplotlib.animation import FuncAnimation
 
+        ## Main animation loop
         def update(*args):
-            if self.stop:
+            if end==True and self.stop:
                 self.animation.event_source.stop()
-            self.run(self.P,num_processes,parallel,)
+            self.run(self.P)
+
+            ## Record position and velocity for animation
             for i,boid in enumerate(self.boids):
                 self.P[i] = boid.position
                 self.V[i] = boid.velocity
-            if self.record == True:
+
+            ## Record data for simulation
+            if record==True and self.record == True:
                 self.instances.append([func(lst) for lst in self.lists for func in self.agg_funcs])
+
+            ## Update animation information
             arrows.set_offsets(self.P)
             arrows.set_UVC(self.V[:,0], self.V[:,1])
 
-        self.start = datetime.datetime.now()
+        #self.start = datetime.datetime.now()
         self.frames = 0
         self.stop = False
         self.record = False
-        ############################################
+
         ## Prepares for data collection
-        #self.agg_funcs = ['min','max','mean','std',np.median]
         self.agg_funcs = [np.min,np.max,np.mean,np.std,np.median]
         self.agg_names = ['min','max','mean','std','median']
         self.agg_labels = ['Min','Max','Mean','Std','Median']
         self.base_names = ['xPos','yPos','xVel','yVel','xA','yA','xS','yS','xC','yC','nAC','nS']
-
         self.dict_names = [base+column for base in self.base_names for column in self.agg_labels]
-        #dict_names.extend(['aligned','flocking','grouped'])
-
         self.lists = [[] for _ in self.base_names]
-
         self.instances = []
-        #######################################
 
+        ## Animates simulation
         fig = plt.figure(figsize=(12.0,10.0))
         ax = fig.add_axes([0.0, 0.0, 1.0, 1.0], frameon=True)
         arrows = ax.quiver(self.P[:,0], self.P[:,1],self.V[:,0], self.V[:,1], scale = 2000, headaxislength=4.5, pivot = 'middle')
-        self.animation = FuncAnimation(fig, update, fargs=[parallel,], interval=1)
+        self.animation = FuncAnimation(fig, update, interval=1)
         ax.set_xlim(0,self.width)
         ax.set_ylim(0,self.height)
         ax.set_xticks([])
@@ -279,7 +280,7 @@ class Flock:
         plt.show()
 
 
-    def simulate(self,num_processes=1,par=False):
+    def simulate(self):
         ## Initializes simulation
         self.start = datetime.datetime.now()
         self.frames = 0
@@ -287,151 +288,72 @@ class Flock:
         self.record = False
 
         ## Prepares for data collection
-        #self.agg_funcs = ['min','max','mean','std',np.median]
         self.agg_funcs = [np.min,np.max,np.mean,np.std,np.median]
         self.agg_names = ['min','max','mean','std','median']
         self.agg_labels = ['Min','Max','Mean','Std','Median']
         self.base_names = ['xPos','yPos','xVel','yVel','xA','yA','xS','yS','xC','yC','nAC','nS']
 
         self.dict_names = [base+column for base in self.base_names for column in self.agg_labels]
-        #dict_names.extend(['aligned','flocking','grouped'])
-
-        #self.lists = [[] for _ in self.base_names]
 
         self.instances = []
 
-        ## Main simulation loops
-        if par:
-            with Parallel(n_jobs = num_processes, prefer='threads', verbose=0) as parallel:
-                while not self.stop:
-                    self.lists = [[] for _ in self.base_names]
-                    self.run(self.P,num_processes,parallel,)
-                    for i,boid in enumerate(self.boids):
-                        self.P[i] = boid.position
-        else:
-            while not self.stop:
-                self.lists = [[] for _ in self.base_names]
-                self.run(self.P,num_processes,par,)
-                for i,boid in enumerate(self.boids):
-                    self.P[i] = boid.position
+        ## Main simulation loop
+        while not self.stop:
+            self.lists = [[] for _ in self.base_names]
+            self.run(self.P)
 
-                    #self.Px[i] = boid.position.x
-                    #self.Py[i] = boid.position.y
-                    #self.Vx[i] = boid.velocity.x
-                    #self.Vy[i] = boid.velocity.y
-                    #self.A[i] = boid.ali
-                    #self.S[i] = boid.sep
-                    #self.C[i] = boid.coh
-                    #self.nAC[i] = boid.nAC
-                    #self.nS[i] = boid.nS
+            ## Update record of boid positions
+            for i,boid in enumerate(self.boids):
+                self.P[i] = boid.position
 
-                ## Run the aggregate functions and save to a list
-                if self.record == True:
-                    self.instances.append([func(lst) for lst in self.lists for func in self.agg_funcs])
+            ## Run the aggregate functions and save to a list
+            if self.record == True:
+                self.instances.append([func(lst) for lst in self.lists for func in self.agg_funcs])
         
         ## Save the record
         self.simulation_record = pd.DataFrame(self.instances, columns=self.dict_names)
+
+        ######
+        ## Optionally save the record of the simulation to file 
         #timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S.%f')
         #print(simulation_record)
         #self.simulation_record.to_csv('./simulation_record.csv')
+        ######
 
-        ## Report the frame/instance rate
+        ######
+        ## Optionallay report the frame/instance rate
         #self.end = datetime.datetime.now()
         #self.elapsed = self.end-self.start
         #print("Time: "+str(self.elapsed))
         #print("FPS: "+str(self.frames/self.elapsed.total_seconds()))
+        ######
 
-        ## Stop the animation
-        try:
-            self.animation.event_source.stop()
-        except:
-            pass
+        ## Return the record for classification of instances
         return self.simulation_record
         
         
-    def run(self,positions,num_processes,parallel=False,delay=50,length=100):
+    def run(self,positions,delay=25,length=200):
 
-        ### Builds gridsearch and finds nearby neighbors
+        ## Builds gridsearch and finds nearby neighbors
         gsp = GriSPy(positions, N_cells = 10, periodic={0:(0,self.width), 1:(0,self.height)})
         dub = max(self.alignCohRadius, self.sepRadius)
         _, self.neighbor_indices = gsp.bubble_neighbors(positions,distance_upper_bound=dub)
 
-        ### Breaks off code for single vs. multiprocessing
-        if not parallel:
-            for i in range(len(self.boids)):
-                this_boid = self.boids[i]
-                neighbors = [self.boids[j] for j in self.neighbor_indices[i]]
-                ret_atts = this_boid.run(neighbors)
-                for i,att in enumerate(ret_atts):
-                    self.lists[i].append(att)
+        ## Calculates and records data for each individual boid
+        for i in range(len(self.boids)):
+            this_boid = self.boids[i]
+            neighbors = [self.boids[j] for j in self.neighbor_indices[i]]
+            ret_atts = this_boid.run(neighbors)
+            for i,att in enumerate(ret_atts):
+                self.lists[i].append(att)
 
-        else:
-            #print("PARALLEL")
-            self.accels = parallel(delayed(self.parallel_flock)(i) for i in range(len(self.boids)))
-            self.boids = parallel(delayed(self.parallel_update)(i) for i in range(len(self.boids)))
-
-        #######################################################
-        #######################################################
-        ###
-        ### A Pooling method is written, but often destabilizes
-        ### system. Run as is at your own risk, and only if 
-        ### attempting to patch multiprocessing.
-        ###
-        #######################################################
-        #######################################################
-        #elif type(parallel) == type(multiprocessing.Pool()):
-        #    pass
-            #print("POOL")
-            #self.flocks = [self.boids[i:i+self.n] for i in range(0,self.count,self.n)]
-            #self.n_i = [self.neighbor_indices[i:i+self.n] for i in range(0,self.count,self.n)]
-            ## Parallelize this
-            ##accel_results = parallel.map(self.pool_flock, range(len(self.flocks)))
-            #self.accels = [accel for sublist in accel_results for accel in sublist]
-            #boid_result = parallel.map(self.pool_update, range(len(self.flocks)))
-            #self.boids = [boid for sublist in boid_result for boid in sublist]
-            #print("FINISHED")
-        #######################################################
-
-
-        ### Manages the number of instances calculated and 
-        ### halting criteria.
+        ## Manages the number of instances calculated and 
+        #  halting criteria.
         self.frames+=1
-        #print(self.frames)
         if self.frames == delay:
             self.record = True
         if self.frames == delay+length:
             self.stop = True
-
-
-    def parallel_flock(self,i):
-        this_boid = self.boids[i]
-        neighbors = [self.boids[j] for j in self.neighbor_indices[i]]
-        return this_boid.flock(neighbors)
-
-
-    def parallel_update(self,i):
-        this_boid = self.boids[i]
-        return this_boid.update(self.accels[i])
-
-
-    ###########################################################
-    ###
-    ### The following two methods were intended for the pooling
-    ### multiprocessing method. Unnecessary for the single 
-    ### processing implementation.
-    ###
-    ###########################################################
-    #def pool_flock(self,i):
-    #    ret_accels = []
-    #    this_flock = self.flocks[i]
-    #    ret_accels = [this_flock[j].flock([self.boids[k] for k in self.n_i[i][j]]) for j in range(len(this_flock))]
-    #    return ret_accels
-
-    #def pool_update(self,i):
-    #    this_flock = self.flocks[i]
-    #    ret_boids = [this_flock[j].update(self.accels[len(this_flock)*i+j]) for j in range(len(this_flock))]
-    #    return ret_boids
-    ###########################################################
 
 
 
@@ -441,20 +363,19 @@ def main():
     screen_width = 3000
     screen_height = screen_width
     sample_species = [1.0, 1.5, 1.35, 200, 75, 2.5]
+    sample_species = [1.4615518242421464, 1.2793818826191314, 0.014844554893147854, 188.9352702321177, 1.0, 1.0]
+    ## alignWeight, sepWeight, cohWeight, alignCohRadius, sepRadius, maxAccel
 
-    num_cores = multiprocessing.cpu_count()
-    num_processes = num_cores//2
+    seed = random.randint(1,1e10)
 
-    flock = Flock(num_processes, count, screen_width, screen_height, *sample_species)
+    flock = Flock(seed, count, screen_width, screen_height, *sample_species)
     
     ### Run a visualization of the boids
-    flock.animate()
+    flock.animate(record=False, end=True)
 
     ### Simulate and produce data
     #flock.simulate()
 
-    ### Simulate and procude data w/ multiprocessing
-    #flock.simulate(num_processes=num_processes, par=True)
 
 
     
