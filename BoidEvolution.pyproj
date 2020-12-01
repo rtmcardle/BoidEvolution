@@ -24,6 +24,9 @@
   <ItemGroup>
     <Compile Include="BoidEvolution.py" />
     <Compile Include="BoidSim.py" />
+    <Compile Include="myEvolve.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="MuCommaLambdaExample.py" />
     <Compile Include="vec2.py" />
   </ItemGroup>

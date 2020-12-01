@@ -31,8 +31,9 @@ import sklearn
 import multiprocessing as mp
 import numpy as np
 import random
-
-
+from deap import creator, base, tools, algorithms
+import array, datetime
+import matplotlib.pyplot as plt
 
 
 class BoidEvolution():
@@ -79,7 +80,7 @@ class BoidEvolution():
 		self.classifiers = [self.alignedClass, self.flockingClass, self.groupedClass]
 
 
-	def boidFitness(self, species=[1.0, 1.5, 1.35, 200, 75, 2.5], seed=0):
+	def boidFitness(self, species=[1.0, 1.5, 1.35, 200, 75, 2.5], seed=0, lock=None):
 		"""
 		Simulate the species of boid and return the fitness 
 		valuation.
@@ -106,6 +107,7 @@ class BoidEvolution():
 		fit_weights = [1,2,1]
 
 		classes = [classifier.predict(saved_data) for classifier in self.classifiers]
+		
 
 		## Am hoping to provide a 1-point bonus to 'perfect' instances 
 		#bonus = [1  if (np.sum(classes[:][i]) == 4) else 0 for i in range(100)]
@@ -137,12 +139,8 @@ class BoidEvolution():
 		if num_processes != 1:
 			## Run in parallel
 			if __name__=="__main__":
-				## Pool option
-				pool = mp.Pool(num_processes)
-				fitnesses = pool.starmap(self.boidFitness, [(boid,seed) for boid in species_list])
-				pool.close()
-				## Parallel option
-				#fitnesses = Parallel(n_jobs=num_processes)(delayed(self.boidFitness)(boid) for boid in species_list)
+				with mp.Pool(num_processes) as pool:
+					fitnesses = pool.starmap(self.boidFitness, [(boid,seed) for boid in species_list])
 		else:
 			## Run in linear
 			fitnesses = [self.boidFitness(boid) for boid in species_list]
@@ -238,11 +236,19 @@ class BoidEvolution():
 
 		## Return the evolved species and its fitness
 
+	
+
 def main():
 	evolution = BoidEvolution()
 	evolution.loadClassifiers()
-	fit = evolution.listFitness()
-	print(f"Sample Species Fitnesses: {fit}")
+	test_ind = [1.4615518242421464, 1.2793818826191314, 0.014844554893147854, 188.9352702321177, 1.0, 1.0]
+
+	count=150
+	screen_width = 3000
+	screen_height = screen_width
+	swarm = Flock(random.randint(1,1e10), count, screen_width, screen_height, *test_ind)
+	swarm.animate()
+	print(f"Sample Species Fitnesses: {best_ind.fitness}")
 
 
 if __name__ == '__main__':
