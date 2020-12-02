@@ -80,7 +80,7 @@ class BoidEvolution():
 		self.classifiers = [self.alignedClass, self.flockingClass, self.groupedClass]
 
 
-	def boidFitness(self, species=[1.0, 1.5, 1.35, 200, 75, 2.5], seed=0, lock=None):
+	def boidFitness(self, species=[1.0, 1.5, 1.35, 200, 75, 2.5], seed=0, g=None, lock=None):
 		"""
 		Simulate the species of boid and return the fitness 
 		valuation.
@@ -90,8 +90,11 @@ class BoidEvolution():
 		:return: the evaluated fitness value
 		"""
 
+		if g is None:
+			g = self.eval_limit
+
 		## Run the boid simulation
-		count=150
+		count = 100 if g <= self.eval_limit/2 else 200
 		screen_width = 3000
 		screen_height = screen_width
 		#seed = random.randint(1,1e10)		
@@ -236,19 +239,19 @@ class BoidEvolution():
 
 		## Return the evolved species and its fitness
 
-	
 
 def main():
 	evolution = BoidEvolution()
 	evolution.loadClassifiers()
 	test_ind = [1.4615518242421464, 1.2793818826191314, 0.014844554893147854, 188.9352702321177, 1.0, 1.0]
+	test_ind = evolution.myEvolve()
 
-	count=150
+	count=200
 	screen_width = 3000
 	screen_height = screen_width
 	swarm = Flock(random.randint(1,1e10), count, screen_width, screen_height, *test_ind)
 	swarm.animate()
-	print(f"Sample Species Fitnesses: {best_ind.fitness}")
+	print(f"Sample Species Fitnesses: {test_ind.fitness}")
 
 
 if __name__ == '__main__':

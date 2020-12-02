@@ -231,7 +231,7 @@ class Flock:
         self.V = np.ndarray((count,2), buffer=np.array([(boid.velocity.x,boid.velocity.y) for boid in self.boids]))
 
 
-    def animate(self,end=True,record=True):
+    def animate(self,end=True,record=True,close=False):
         import matplotlib.pyplot as plt
         from matplotlib.animation import FuncAnimation
 
@@ -239,6 +239,13 @@ class Flock:
         def update(*args):
             if end==True and self.stop:
                 self.animation.event_source.stop()
+                if close:
+                    plt.close()
+                ## Save the record
+                self.simulation_record = pd.DataFrame(self.instances, columns=self.dict_names)
+
+                ## Return the record for classification of instances
+                #return self.simulation_record
             self.run(self.P)
 
             ## Record position and velocity for animation
@@ -278,6 +285,8 @@ class Flock:
         ax.set_xticks([])
         ax.set_yticks([])
         plt.show()
+
+        return self.simulation_record
 
 
     def simulate(self):
