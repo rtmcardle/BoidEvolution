@@ -80,7 +80,7 @@ class BoidEvolution():
 		self.classifiers = [self.alignedClass, self.flockingClass, self.groupedClass]
 
 
-	def boidFitness(self, species=[1.0, 1.5, 1.35, 200, 75, 2.5], seed=0, lock=None):
+	def boidFitness(self, species=[1.0, 1.5, 1.35, 200, 75, 2.5], seed=0, lock=None, detail=False):
 		"""
 		Simulate the species of boid and return the fitness 
 		valuation.
@@ -116,7 +116,12 @@ class BoidEvolution():
 
 		fitness = np.sum(fits)/max_fit
 
-		return fitness
+		if detail:
+			detail_fits = [np.sum(classes[i])/len(classes[i]) for i in range(len(classes))]
+			return fitness, detail_fits
+
+		else:
+			return fitness
 
 	def listFitness(self,species_list=[[1.0, 1.5, 1.35, 200.0, 75.0, 2.5],[1.2, 1.1, 1.5, 100.0, 150.0, 5.0]]*10):
 		"""
@@ -242,13 +247,15 @@ def main():
 	evolution = BoidEvolution()
 	evolution.loadClassifiers()
 	test_ind = [1.4615518242421464, 1.2793818826191314, 0.014844554893147854, 188.9352702321177, 1.0, 1.0]
+	testFit, testDetailFit = evolution.boidFitness(test_ind,detail=True)
+	print(f"Test Individual Fitness: {testFit}")
+	print(f"Test Detail Fitness: {testDetailFit}")
 
 	count=150
 	screen_width = 3000
 	screen_height = screen_width
 	swarm = Flock(random.randint(1,1e10), count, screen_width, screen_height, *test_ind)
 	swarm.animate()
-	print(f"Sample Species Fitnesses: {best_ind.fitness}")
 
 
 if __name__ == '__main__':
