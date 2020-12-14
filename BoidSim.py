@@ -332,7 +332,7 @@ class Flock:
         return self.simulation_record
         
         
-    def run(self,positions,delay=25,length=200):
+    def run(self,positions,delay=50,length=150):
 
         ## Builds gridsearch and finds nearby neighbors
         gsp = GriSPy(positions, N_cells = 10, periodic={0:(0,self.width), 1:(0,self.height)})
