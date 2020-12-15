@@ -563,6 +563,7 @@ class BoidEvolution():
 			#print(bestDetailFit)
 			##################################################
 
+
 		self.plotAndRecord(logbook,hof,name)
 
 		return hof[0]
@@ -1002,3 +1003,4 @@ if __name__ == '__main__':
 	main()
 	#testStrat()
 	#test()
+
