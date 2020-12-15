@@ -24,6 +24,7 @@
   <ItemGroup>
     <Compile Include="BoidEvolution.py" />
     <Compile Include="BoidSim.py" />
+    <Compile Include="evolveSteadyState.py" />
     <Compile Include="myEvolve.py">
       <SubType>Code</SubType>
     </Compile>
