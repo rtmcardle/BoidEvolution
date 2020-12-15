@@ -76,11 +76,11 @@ class BoidEvolution():
 		"""
 
 		## Evolutionary parameters and limits
-		self.mu = 10  ### Also defines population size for generational and steady GAs
-		self.lambda_ = 3 * self.mu
+		self.mu = 100  ### Also defines population size for generational and steady GAs
+		self.lambda_ = 7 * self.mu
 
 		self.current_evals = 0
-		self.eval_limit = 75
+		self.eval_limit = 10000
 		self.eval_limit_steady = self.eval_limit/10  ### Lower limit for steady
 		
 
@@ -169,19 +169,6 @@ class BoidEvolution():
 			print(f'Best Individual: {hof[0]}\n', file=f)
 			print(f'History: ', file=f)
 			print(logbook, file=f)
-
-
-
-	def evolve(self,method):
-		"""
-		Method for evolving a species of boid using the 
-		provided method.
-
-		:param method: the method to be used
-		:returns: the evolved species
-		"""
-
-
 
 
 	def boidFitness(self, species, seed=0, current_evals=3000, eval_limit=3000, detail=False):
@@ -842,145 +829,6 @@ class BoidEvolution():
 		return hof[0]
 
 
-	#def ryanEvolve(self):
-	#	"""
-	#	Test function to see what kind of behavior is evolved.
-	#	Uses a Mu+Lambda approach.
-	#	"""
-
-	#	name = "ryan"
-
-	#	self.prepareEvolution()
-
-	#	## Create Fitness, Individuals, and Strategy variables
-	#	creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-	#	creator.create("Individual", array.array, typecode='d', fitness=creator.FitnessMax, strategy=None)
-	#	creator.create("Strategy", array.array, typecode="d")
-
-	#	## Sets up our evolutionary approach
-	#	toolbox = base.Toolbox()
-
-	#	toolbox.register('individual', self.initBoidsStrat, creator.Individual, creator.Strategy, *self.parameter_bounds, *self.strategy_bounds)
-	#	toolbox.register('population', tools.initRepeat, list, toolbox.individual)
-
-	#	toolbox.register("mate", tools.cxESBlend, alpha=0.333)
-	#	toolbox.register("mutate", tools.mutESLogNormal, c=1.0, indpb=1/6)
-	#	toolbox.register('select', tools.selRandom)
-	#	toolbox.register('evaluate', self.boidFitness)
-
-	#	toolbox.decorate('mate', self.checkBounds(self.parameter_bounds))
-	#	toolbox.decorate('mutate', self.checkBounds(self.parameter_bounds))
-
-	#	toolbox.decorate('mate', self.checkStrategy(self.strategy_bounds))
-	#	toolbox.decorate('mutate', self.checkStrategy(self.strategy_bounds))
-
-		
-	#	stats = tools.Statistics(lambda ind: ind.fitness.values)
-	#	stats.register("avg", np.mean)
-	#	stats.register("std", np.std)
-	#	stats.register("min", np.min)
-	#	stats.register("max", np.max)
-	#	self.logbook = tools.Logbook()
-	#	self.logbook.header = 'gen','evals','min','max','avg','std'
-	#	hof = tools.HallOfFame(1)
-		
-	#	## Initializes the population with n individuals
-	#	g = 0
-	#	pop = toolbox.population(n=self.mu)
-	#	seed = random.randint(1,1e10)
-
-	#	## Evaluate the entire population for fitness in parallel
-	#	if __name__=="__main__":
-	#		with mp.Pool(self.num_processes) as pool:
-	#			fitnesses = pool.starmap(self.boidFitness, [(boid.tolist(),seed,self.current_evals,self.eval_limit) for boid in pop])
-
-	#	## Apply fitness values
-	#	for ind, fit in zip(pop, fitnesses):
-	#		ind.fitness.values = fit,
-
-
-	#	## Record initial population in stats logbook
-	#	self.current_evals += len(pop)
-	#	record = stats.compile(pop)
-	#	logbook = tools.Logbook()
-	#	logbook.header = 'gen','evals','min','max','avg','std'
-	#	logbook.record(gen=0, evals=self.current_evals, **record)
-	#	print(logbook.stream)
-	#	hof.update(pop)
-	#	print(hof[0])
-	#	print(hof[0].fitness.values[0])
-
-	#	## Loop for each generation until stopping criteria
-	#	while self.current_evals < (self.eval_limit - self.lambda_):
-	#		g+=1
-	#		## Select the next generation individuals
-	#		offspring = toolbox.select(pop, self.lambda_)
-
-	#		## Clone the selected individuals
-	#		offspring = list(map(toolbox.clone, offspring))
-
-	#		## Apply crossover and mutation on the offspring
-	#		for child1, child2 in zip(offspring[::2], offspring[1::2]):
-	#			if random.random() < self.CXPB:
-	#				toolbox.mate(child1, child2)
-	#				del child1.fitness.values
-	#				del child2.fitness.values
-
-	#		for mutant in offspring:
-	#			if random.random() < self.MUTPB:
-	#				toolbox.mutate(mutant)
-	#				del mutant.fitness.values
-
-	#		## Evaluate the individuals with an invalid fitness
-	#		invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-	#		seed = random.randint(1,1e10)
-	#		if __name__=="__main__":
-	#			with mp.Pool(self.num_processes) as pool:
-	#				fitnesses = pool.starmap(self.boidFitness, [(boid.tolist(),seed,self.current_evals,self.eval_limit) for boid in invalid_ind])
-
-	#		## Apply found fitness values
-	#		for ind, fit in zip(invalid_ind, fitnesses):
-	#			ind.fitness.values = fit,
-
-
-	#		#### MuPlusLambda
-	#		## New generation
-	#		new_gen = list(map(toolbox.clone, [*pop,*offspring]))
-
-	#		## Sort the new generation by fitness
-	#		new_gen.sort(key=lambda x: x.fitness.values[0])
-
-	#		## Replace population with top mu of new generation
-	#		pop = list(map(toolbox.clone, new_gen[-self.mu:]))
-	#		####
-
-
-	#		##### MuCommaLambda
-	#		### Sort the new generation by fitness
-	#		#offspring.sort(key=lambda x: x.fitness.values[0])
-
-	#		### Replace population with top mu of new generation
-	#		#pop = list(map(toolbox.clone, offspring[-self.mu:]))
-	#		#####
-
-	#		##################################################
-	#		## Record the new generation
-	#		hof.update(pop)
-	#		record = stats.compile(pop)
-	#		self.current_evals += len(invalid_ind)
-	#		logbook.record(gen=g, evals=self.current_evals, **record)
-	#		print(logbook.stream)
-	#		print(hof[0])
-	#		print(hof[0].fitness.values[0])
-	#		bestFit, bestDetailFit, bestFitWeight = self.boidFitness(hof[0].tolist(),seed,self.current_evals-len(invalid_ind),self.eval_limit,detail=True)
-	#		print(bestDetailFit)
-	#		##################################################
-
-	#	self.plotAndRecord(logbook,hof,name)
-
-	#	return hof[0]
-
-
 	def initBoidsStrat(self,ind_cls, strg_cls, wMin, wMax, rMin, rMax, aMin, aMax, sWMin, sWMax, sRMin, sRMax, sAMin, sAMax):
 		"""
 		An initializer to create individuals for the Boid 
@@ -1092,7 +940,6 @@ def main():
 	evolution = BoidEvolution()
 	evolution.loadClassifiers()
 	
-
 	##### Run Generational Algorithm
 	#print(f"Generational Algorithm\n")
 	#bestGen = evolution.evolveGeneration()
@@ -1121,11 +968,6 @@ def main():
 	print(f"Best Individual Fitness: {bestFit}")
 	print(f"Best Detail Fitness: {bestDetailFit}")
 
-	#count=200
-	#screen_width = 3000
-	#screen_height = screen_width
-	#swarm = Flock(random.randint(1,1e10), count, screen_width, screen_height, *best_ind.tolist())
-	#swarm.animate()
 
 def test():
 	evolution = BoidEvolution()
