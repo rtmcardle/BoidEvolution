@@ -277,6 +277,83 @@ class BoidEvolution():
 		#	that reports the parameters used and the evolution
 		#	that took place.
 		########
+		creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+		creator.create("Individual", array.array, typecode="d", fitness=creator.FitnessMax, strategy=None)
+		creator.create("Strategy", array.array, typecode="d")
+
+
+		#toolbox
+		# INSTANCES = 150
+		toolbox = base.Toolbox()
+		# b = BoidEvolution()
+		toolbox.register("individual", initBoids, creator.Individual, creator.Strategy, wMin, wMax, rMin, rMax, aMin, aMax, sMin, sMax) #if defined within class, self.initBoids
+		toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+		toolbox.register("mate", tools.cxESBlend, alpha=0.333)
+		toolbox.register("mutate", tools.mutESLogNormal, c=0.01, indpb=0.1)
+		toolbox.register("select", tools.selRandom)
+		toolbox.register("evaluate", self.boidFitness)
+
+		stats = tools.Statistics(lambda ind: ind.fitness.values)
+		stats.register("avg", np.mean)
+		stats.register("std", np.std)
+		stats.register("min", np.min)
+		stats.register("max", np.max)
+
+		hof = tools.HallOfFame(1)
+
+		pop = toolbox.population(n=mu)
+		fitnesses = map(toolbox.evaluate, pop)
+		for ind, fit in zip(pop, fitnesses):
+		    ind.fitness.values = fit
+
+		g = 0
+		record = stats.compile(pop)
+		total_evals = mu #possibly
+		eval_limit = 10000
+		logbook = tools.Logbook()
+		logbook.header = 'gen','evals','min','max','avg','std'
+		logbook.record(gen=0, evals=mu, **record)
+
+		## what is our stopping criteria?
+		# start = 50
+		CXPB = 0.95
+		MUTPB = 0.1
+		while True:
+		    if total_evals < eval_limit:
+			g+=1
+			offspring = toolbox.select(pop, lambda_)
+			offspring = list(map(toolbox.clone, offspring))
+
+			#crossover and mutation
+			for child1, child2 in zip(offspring[::2]. offspring[1:2]):
+			    if random.random() < CXPB:
+				toolbox.mate(child1, child2)
+				del child1.fitness.values
+				del child2.fitness.values
+
+			for mutant in offspring:
+			    if random.random < MUTPB:
+				toolbox.mutate(mutant)
+				del mutant.fitness.values
+
+			invalid = [ind for ind in offspring if not ind.fitness.valid]
+			fitnesses = map(toolbox.evaluate, invalid)
+			for ind, fit in zip(invalid, fitnesses):
+			    ind.fitness.values = fit
+
+			#replace population with top mu+lam offspring
+			newGen = list(map(toolbox.clone, [*pop, *offspring])) #make a list with two combined--change to Python 3.7
+
+			newGen.sort(key = lambda x: x.fitness.values[0])
+
+			pop = list(map(toolbox.clone, newGen[-mu:])) #selects mu highest fitness in population
+			hof.update(pop)
+			record = stats.compile(pop)
+			total_evals += len(invalid)
+			logbook.record(gen=g, evals=total_evals, **record)
+			print(logbook.stream)
+		    else:
+			break
 
 		## Return the evolved species and its fitness
 
