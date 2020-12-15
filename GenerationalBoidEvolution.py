@@ -1,151 +1,222 @@
-from typing import List
-from itertools import repeat
-from BoidEvolution import BoidEvolution
+from BoidSim import Flock
+
 import random
-import time
 import math
+import os
+import multiprocessing
+import numpy as np
+from deap import algorithms, base, creator, tools
+from joblib import load
+import sklearn
 
 
-try:
-    from collections.abc import Sequence
-except ImportError:
-    from collections import Sequence
+class GenerationalGA:
+    def __init__(self):
+        self.loadClassifiers()
+        # Initialize fitness goal and individual type
+        creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+        creator.create("Individual", list, fitness=creator.FitnessMax)
+
+        # Initialize individuals, populations, and evolution operators
+        toolbox = base.Toolbox()
+        toolbox.register("individual", tools.initIterate, creator.Individual, self.createSpecies)
+        toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+        toolbox.register("evaluate", self.evaluate)
+        toolbox.register("mate", tools.cxOnePoint)
+        toolbox.register("mutate", tools.mutGaussian, indpb=0.5, mu=25.5,
+                         sigma=12.5)  # 50% chance for each value to mutate
+        toolbox.register("mutate2", tools.mutShuffleIndexes, indpb=0.5)  # 50% chance for each value to mutate
+        toolbox.register("select", tools.selTournament, tournsize=5)
+
+        # Evolve population of 100 indivduals for 2000 generations
+        # 200,000 fitness evaluations
+        pop = toolbox.population(n=15)
+        ngen = 100
+
+        # Evaluate the entire population
+        fitnesses = list(map(toolbox.evaluate, pop))
+        for ind, fit in zip(pop, fitnesses):
+            ind.fitness.values = fit
+
+        # CXPB  is the probability with which two individuals are crossed
+        # MUTPB is the probability for mutating an individual
+        CXPB, MUTPB = 0.75, 0.6
+
+        # Extracting all the fitnesses of
+        fits = [ind.fitness.values[0] for ind in pop]
+
+        # Variable keeping track of the number of generations
+        g = 0
+
+        # Gather best values
+        best = [0.0]
+
+        # Begin the evolution
+        while max(best) < 1.0 and g < ngen:
+            # A new generation
+            g = g + 1
+            print("-- Generation %i --" % g)
+
+            # Gather all the fitnesses in one list and print the stats
+            fits = [ind.fitness.values for ind in pop]
+
+            print("  Max %s" % max(fits)[0])
+            best.append(max(fits)[0])
+
+            ##############################################################################
+            # Everything enclosed in hash was altered by Zach from Gianni's code for
+            # reference.
+
+            # Select the next generation individuals
+            bestIndv = tools.selBest(pop, k=2)
+
+            # Elitism: put top two individuals in next generation
+            nextGeneration = []
+            nextGeneration += bestIndv
+
+            # perform crossover on pairs until nextGeneration is equal in size to pop
+            while len(nextGeneration) < (len(pop)-2):
+                parents = tools.selRoulette(pop, k=2)
+                children = toolbox.mate(parents[0], parents[1])
+
+                # mutation of children with 'MUTPB' chance
+                for child in children:
+                    if random.random() < MUTPB:
+                        toolbox.mutate(child)
+
+                # add the pair of children to nextGeneration
+                nextGeneration += children
+
+                # adds a single child in the case that len(pop) is odd
+                if len(nextGeneration) == (len(pop)-1):
+                    parents = tools.selRoulette(pop, k=2)
+                    child = toolbox.mate(parents[0], parents[1])[0]
+
+                    # mutation of child
+                    if random.random() < MUTPB:
+                        toolbox.mutate(child)
+
+                    # add the child to nextGeneration
+                    nextGeneration += [child]
+
+            ##print(f'Pop: {pop}')
+            print(f'Population: {fits}')
+            pop[:] = nextGeneration
+            ##print(f'Offspring: {pop}')
+
+            ##############################################################################
+
+            # Evaluate the entire population
+            fitnesses = list(map(toolbox.evaluate, pop))
+            for ind, fit in zip(pop, fitnesses):
+                ind.fitness.values = fit
+
+            # Extracting all the fitnesses of
+            fits = [ind.fitness.values[0] for ind in pop]
+            print(f'Offspring: {fits}')
+
+        print(f"----Best solution----")
+        t = tools.selBest(pop, k=1)[0]
+        fit = t.fitness.values
+        print(f"Fitness {fit}")
+
+    # Fitness evalutation
+    def evaluate(self, individual):
+        value = self.boidFitness(individual)
+        return (value,)
+
+    def loadClassifiers(self,
+                        location='C:\\Users\\ZachPC\\PycharmProjects\\EvolProg Term Project\\BoidEvolution\\TreeModels'):
+        ## Load the saved models
+        self.alignedClass = load(os.path.join(location, 'alignedClass.joblib'))
+        self.flockingClass = load(os.path.join(location, 'flockingClass.joblib'))
+        self.groupedClass = load(os.path.join(location, 'groupedClass.joblib'))
+
+        ## Save list of classifiers as an accessible class variable
+        self.classifiers = [self.alignedClass, self.flockingClass, self.groupedClass]
+
+    # def boidFitness(self,species=[1.0, 1.5, 1.35, 200, 75, 2.5]):
+    # 	## Run the boid simulation
+    #     count=150
+    #     screen_width = 3000
+    #     screen_height = screen_width
+    #     num_cores = multiprocessing.cpu_count()
+    #     num_processes = num_cores//2
+
+    #     swarm = Flock(num_processes, count, screen_width, screen_height, *species)
+
+    #     saved_data = swarm.simulate()
+
+    #     ## Classify the instances and calculate fitness
+    #     max_fit = 4 * len(saved_data.index)
+    #     fit_weights = [1,2,1]
+
+    #     classes = [classifier.predict(saved_data) for classifier in self.classifiers]
+
+    #     ## Am hoping to provide a 1-point bonus to 'perfect' instances
+    # 	#bonus = [1  if (np.sum(classes[:][i]) == 4) else 0 for i in range(100)]
+
+    #     fits = np.dot(fit_weights,classes)
+
+    #     fitness = np.sum(fits)/max_fit
+
+    #     return fitness
+
+    def boidFitness(self, species=[1.0, 1.5, 1.35, 200, 75, 2.5], seed=0, lock=None, detail=False):
+        """
+        Simulate the species of boid and return the fitness
+        valuation.
+
+		:param species: A list which specifies the parameters
+			that define a given species of boid.
+		:return: the evaluated fitness value
+		"""
+
+        ## Run the boid simulation
+        count = 150
+        screen_width = 3000
+        screen_height = screen_width
+        # seed = random.randint(1,1e10)
+        # seed = 10
+
+        swarm = Flock(seed, count, screen_width, screen_height, *species)
+
+        saved_data = swarm.simulate()
+
+        ## Classify the instances and calculate fitness
+        max_fit = 4 * len(saved_data.index)
+        fit_weights = [1, 2, 1]
+
+        classes = [classifier.predict(saved_data) for classifier in self.classifiers]
+
+        ## Am hoping to provide a 1-point bonus to 'perfect' instances
+        # bonus = [1  if (np.sum(classes[:][i]) == 4) else 0 for i in range(100)]
+
+        fits = np.dot(fit_weights, classes)
+
+        fitness = np.sum(fits) / max_fit
+
+        if detail:
+            detail_fits = [np.sum(classes[i]) / len(classes[i]) for i in range(len(classes))]
+            return fitness, detail_fits
+
+        else:
+            return fitness
+
+    def createSpecies(self):
+        return [round(random.uniform(0.10, 10.00), 2),  ## Weight of the alignment force
+                round(random.uniform(0.10, 10.00), 2),  ## Weight of the separation force
+                round(random.uniform(0.10, 10.00), 2),  ## Weight of the cohesion force
+                round(random.uniform(0.10, 10.00), 2),  ##random.randint(1, 500), ## Radius for alignment/cohesion
+                round(random.uniform(0.10, 10.00), 2),  ##random.randint(1, 200), ## Radius for separation
+                round(random.uniform(0.10, 10.00), 2)  ## Maximum acceleration
+                ]
 
 
-Genome = List[float]
-Population = List[Genome]
+def main():
+    GenerationalGA()
 
 
-def generate_genome() -> Genome:
-    genome = []
+if __name__ == '__main__':
+    main()
 
-    genome += [random.uniform(0, 5)]
-    genome += [random.uniform(0, 5)]
-    genome += [random.uniform(0, 1)]
-    genome += [random.uniform(100, 500)]
-    genome += [random.uniform(0, 5)]
-    genome += [random.uniform(0, 5)]
-
-    return genome
-
-
-def generate_population(pop_size: int) -> Population:
-    return [generate_genome() for i in range(pop_size)]
-
-
-def fitness(genome: Genome, evolution: BoidEvolution) -> float:
-    print("reached fitness")
-    return evolution.boidFitness(genome, detail=False)
-
-
-def selection(population: Population) -> Population:
-    return random.choices(
-        population=population,
-        weights=[(1/(fitness(genome, evolution))) for genome in population],
-        k=2
-    )
-
-
-def gaussian_mutation(genome: Genome, mu, sigma, indpb):
-    size = len(genome)
-    if not isinstance(mu, Sequence):
-        mu = repeat(mu, size)
-    elif len(mu) < size:
-        raise IndexError("mu must be at least the size of individual: %d < %d" % (len(mu), size))
-    if not isinstance(sigma, Sequence):
-        sigma = repeat(sigma, size)
-    elif len(sigma) < size:
-        raise IndexError("sigma must be at least the size of individual: %d < %d" % (len(sigma), size))
-
-    for i, m, s in zip(range(size), mu, sigma):
-        if random.random() < indpb:
-            genome[i] += random.gauss(m, s)
-
-    return genome
-
-
-def whole_arithmetic_cx(parent1: Genome, parent2: Genome):
-    rand_num = random.random()
-    child1 = []
-    child2 = []
-    for i in range(len(parent1)):
-        child1 += [(rand_num * parent1[i] + (1-rand_num) * parent2[i])]
-        child2 += [((1-rand_num) * parent1[0] + rand_num * parent2[0])]
-
-    return [child1, child2]
-
-
-def run_algorithm(evolution: BoidEvolution):
-    optimal_fitness = 0
-    pop_size = 6
-    fitness_calls = 0
-    max_fitness_calls = 200000
-    num_generations = 0
-    mutation_prob = .5
-
-    population = generate_population(pop_size)
-    population = sorted(    # sort the init population
-        population,
-        key=lambda genome: fitness(genome, evolution),
-        reverse=False
-    )
-    fitness_calls += pop_size
-
-    while True:
-        # if the optimal solution is already present, then break
-        if fitness(population[0], evolution) == optimal_fitness:
-            break
-        fitness_calls += 1
-
-        # if we have exceeded the max num of fitness calls, then break
-        if fitness_calls >= max_fitness_calls:
-            break
-
-        # select two parents (Roulette)
-        parents = selection(population)
-        # perform recombination on the parents
-        children = whole_arithmetic_cx(parents[0], parents[1])
-        # mutate the children (Gaussian)
-        for i in range(len(children)):
-            children[i] = gaussian_mutation(children[i], 0, 7, mutation_prob)
-
-        # add children to the population
-        population += children
-
-        # sort to put the children in the correct order
-        population = sorted(
-            population,
-            key=lambda genome: fitness(genome, evolution),
-            reverse=False
-        )
-        fitness_calls += pop_size
-
-        # the worst 2 individuals do not live to the next generation
-        next_generation = population[0:pop_size]
-
-        population = next_generation
-        num_generations += 1
-
-    population = sorted(
-        population,
-        key=lambda genome: fitness(genome, evolution),
-        reverse=False
-    )
-    fitness_calls += pop_size
-
-    print(f"Number of generations: {num_generations}")
-    print(f"Fitness function calls: {fitness_calls}")
-    print(f"Individual with fitness 0: {population[0]}")
-    print(f"Fitness of this individual: {fitness(population[0], evolution)}")
-
-    return population
-
-
-if __name__ == "__main__":
-    start = time.time()
-    evolution = BoidEvolution()
-    evolution.loadClassifiers()
-    test = [1.4, 1.2, 0.0148, 150, 1.0, 1.0]
-    # run_algorithm(evolution) #
-    end = time.time()
-    print(f"Time: {end - start}s")
