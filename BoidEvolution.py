@@ -419,7 +419,7 @@ class BoidEvolution():
 		:returns: the evolved species, and its fitness
 		"""
 		
-		name = "Steady"
+		name = "Generation"
 
 		self.prepareEvolution()
 		
@@ -500,36 +500,55 @@ class BoidEvolution():
 			#nextGeneration += bestIndv
 
             # perform crossover on pairs until nextGeneration is equal in size to pop
-			while len(nextGeneration) < (len(pop)-2):
-				parents = toolbox.select(pop,2)
-				parents = list(map(toolbox.clone,parents))
-				toolbox.mate(parents[0], parents[1])
-				for parent in parents:
-					del parent.fitness.values
-
-                # mutation of children with 'MUTPB' chance
-				for parent in parents:
-					if random.random() < self.MUTPB:
-						toolbox.mutate(parent)
+			# case that len(pop) is even
+			if len(pop) % 2 == 0:
+				while len(nextGeneration) < (len(pop)):
+					parents = toolbox.select(pop,2)
+					parents = list(map(toolbox.clone,parents))
+					toolbox.mate(parents[0], parents[1])
+					for parent in parents:
 						del parent.fitness.values
 
-                # add the pair of children to nextGeneration
-				nextGeneration.extend(parents)
+					# mutation of children with 'MUTPB' chance
+					for parent in parents:
+						if random.random() < self.MUTPB:
+							toolbox.mutate(parent)
+							del parent.fitness.values
 
-                # adds a single child in the case that len(pop) is odd
-				if len(nextGeneration) == (len(pop)-1):
-					parents = toolbox.select(pop,2)
+					# add the pair of children to nextGeneration
+					nextGeneration.extend(parents)
+
+			# case the len(pop) is odd
+			if len(pop) % 2 == 1:
+				while len(nextGeneration) < len(pop)-2:
+					parents = toolbox.select(pop, 2)
+					parents = list(map(toolbox.clone, parents))
 					toolbox.mate(parents[0], parents[1])
-					child = parents[0]
+					for parent in parents:
+						del parent.fitness.values
+
+					# mutation of children with 'MUTPB' chance
+					for parent in parents:
+						if random.random() < self.MUTPB:
+							toolbox.mutate(parent)
+							del parent.fitness.values
+
+					# add the pair of children to nextGeneration
+					nextGeneration.extend(parents)
+
+				# add one more child to nextGeneration
+				parents = toolbox.select(pop,2)
+				toolbox.mate(parents[0], parents[1])
+				child = parents[0]
+				del child.fitness.values
+
+				# mutation of child
+				if random.random() < self.MUTPB:
+					toolbox.mutate(child)
 					del child.fitness.values
 
-                    # mutation of child
-					if random.random() < self.MUTPB:
-						toolbox.mutate(child)
-						del child.fitness.values
-
-                    # add the child to nextGeneration
-					nextGeneration.extend(list(map(toolbox.clone,child)))
+				# add the child to nextGeneration
+				nextGeneration.extend(list(map(toolbox.clone,child)))
 
 			pop = list(map(toolbox.clone,nextGeneration))
 			####
@@ -942,11 +961,11 @@ def main():
 	evolution.loadClassifiers()
 	
 	##### Run Generational Algorithm
-	#print(f"Generational Algorithm\n")
-	#bestGen = evolution.evolveGeneration()
-	#bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestGen.tolist(),detail=True)
-	#print(f"Best Individual Fitness: {bestFit}")
-	#print(f"Best Detail Fitness: {bestDetailFit}")
+	print(f"Generational Algorithm\n")
+	bestGen = evolution.evolveGeneration()
+	bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestGen.tolist(),detail=True)
+	print(f"Best Individual Fitness: {bestFit}")
+	print(f"Best Detail Fitness: {bestDetailFit}")
 
 	#### Run Steady State Algorithm
 	print(f"Steady State Algorithm\n")
