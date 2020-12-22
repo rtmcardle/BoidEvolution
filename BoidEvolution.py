@@ -440,7 +440,7 @@ class BoidEvolution():
 		:returns: the evolved species, and its fitness
 		"""
 		
-		name = "Steady"
+		name = "Generation"
 
 		self.prepareEvolution()
 		
