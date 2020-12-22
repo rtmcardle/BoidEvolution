@@ -27,10 +27,62 @@
     <Compile Include="vec2.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="GBCModels\alignedClass.joblib" />
+    <Content Include="GBCModels\flockingClass.joblib" />
+    <Content Include="GBCModels\groupedClass.joblib" />
     <Content Include="requirements.txt" />
+    <Content Include="runs_record\20201215-185924.541298Steady\log.txt" />
+    <Content Include="runs_record\20201215-185924.541298Steady\plot.png" />
+    <Content Include="runs_record\20201215-224819.318381MuPlusLambda7\log.txt" />
+    <Content Include="runs_record\20201215-224819.318381MuPlusLambda7\plot.png" />
+    <Content Include="runs_record\20201216-022543.905369muCommaLambda3\log.txt" />
+    <Content Include="runs_record\20201216-022543.905369muCommaLambda3\plot.png" />
+    <Content Include="runs_record\20201216-044500.031759muCommaLambda5\log.txt" />
+    <Content Include="runs_record\20201216-044500.031759muCommaLambda5\plot.png" />
+    <Content Include="runs_record\20201216-070339.092082muCommaLambda7\log.txt" />
+    <Content Include="runs_record\20201216-070339.092082muCommaLambda7\plot.png" />
+    <Content Include="runs_record\20201216-103040.549177MuPlusLambda3\log.txt" />
+    <Content Include="runs_record\20201216-103040.549177MuPlusLambda3\plot.png" />
+    <Content Include="runs_record\20201216-172127.077720MuPlusLambda5\log.txt" />
+    <Content Include="runs_record\20201216-172127.077720MuPlusLambda5\plot.png" />
+    <Content Include="runs_record\20201217-000010.961909MuPlusLambda9\log.txt" />
+    <Content Include="runs_record\20201217-000010.961909MuPlusLambda9\plot.png" />
+    <Content Include="runs_record\20201217-181124.645405Generation\log.txt" />
+    <Content Include="runs_record\20201217-181124.645405Generation\plot.png" />
+    <Content Include="screen_caps\plus5\plus5cap.png" />
+    <Content Include="screen_caps\plus7\plus7cap.png" />
+    <Content Include="screen_caps\plus9\plus9cap.png" />
+    <Content Include="screen_caps\[2.0, 1.0, 1.5, 275, 125.0, 1.5]\customcap.png" />
+    <Content Include="screen_caps\[2.0, 1.5, 2.0, 200, 125.0, 0.5]\plot.png" />
+    <Content Include="TreeModels\alignedClass.joblib" />
+    <Content Include="TreeModels\alignedlog_best.txt" />
+    <Content Include="TreeModels\flockingClass.joblib" />
+    <Content Include="TreeModels\flockinglog_best.txt" />
+    <Content Include="TreeModels\groupedClass.joblib" />
+    <Content Include="TreeModels\groupedlog_best.txt" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|VisualStudio|BoidEvolEnv" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="GBCModels\" />
+    <Folder Include="runs_record\" />
+    <Folder Include="runs_record\20201215-185924.541298Steady\" />
+    <Folder Include="runs_record\20201215-224819.318381MuPlusLambda7\" />
+    <Folder Include="runs_record\20201216-022543.905369muCommaLambda3\" />
+    <Folder Include="runs_record\20201216-044500.031759muCommaLambda5\" />
+    <Folder Include="runs_record\20201216-070339.092082muCommaLambda7\" />
+    <Folder Include="runs_record\20201216-103040.549177MuPlusLambda3\" />
+    <Folder Include="runs_record\20201216-172127.077720MuPlusLambda5\" />
+    <Folder Include="runs_record\20201217-000010.961909MuPlusLambda9\" />
+    <Folder Include="runs_record\20201217-181124.645405Generation\" />
+    <Folder Include="screen_caps\" />
+    <Folder Include="screen_caps\plus5\" />
+    <Folder Include="screen_caps\plus7\" />
+    <Folder Include="screen_caps\plus9\" />
+    <Folder Include="screen_caps\[2.0, 1.0, 1.5, 275, 125.0, 1.5]\" />
+    <Folder Include="screen_caps\[2.0, 1.5, 2.0, 200, 125.0, 0.5]\" />
+    <Folder Include="TreeModels\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
