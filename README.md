@@ -54,5 +54,5 @@ We ultimately corroborate suspicions raised by Liu et al. that suggest that the 
 [2]: https://unsw-swarm-survey.netlify.app/
 [3]: https://www.labri.fr/perso/nrougier/from-python-to-numpy/code/boid_python.py
 [4]: https://www.researchgate.net/profile/Craig_Reynolds2/publication/2797343_Flocks_Herds_and_Schools_A_Distributed_Behavioral_Model/links/0fcfd5095a869204df000000.pdf
-[5]: https://ryantmcardle.com/project-portfolio/
-[6]: https://ryantmcardle.com/project-portfolio/
+[5]: https://ryantmcardle.com/wp-content/uploads/2020/12/EvolvingBoidFlockingBehavior.pdf
+[6]: https://ryantmcardle.com/wp-content/uploads/2020/12/ClassifyingBehaviorsBoidSwarms.pdf
