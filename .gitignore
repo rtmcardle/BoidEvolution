@@ -8,7 +8,8 @@ evolveSteadyState.py
 GenerationalBoidEvolution.py
 MuCommaLambdaExample.py
 myEvolve.py
-GBCModels/
+/GBCModels/
+/BoidEnv/
 
 
 # User-specific files
@@ -346,5 +347,3 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
-/runs_record
-/myEvolve.py
