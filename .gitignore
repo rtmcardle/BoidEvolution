@@ -3,6 +3,14 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Redundant Source
+evolveSteadyState.py
+GenerationalBoidEvolution.py
+MuCommaLambdaExample.py
+myEvolve.py
+GBCModels/
+
+
 # User-specific files
 *.rsuser
 *.suo
