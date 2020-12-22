@@ -13,7 +13,7 @@
 ####	Evolution Group Project. Each group member was tasked 
 ####	with selecting one of the evolve******() methods to 
 ####	develop and explore the performance of the given method
-####	on the probelm. This file compiles for submission each 
+####	on the problem. This file compiles for submission each 
 ####	of these codes with uniform plotting codes so results 
 ####	are easily compared.
 ####
@@ -27,15 +27,17 @@
 
 from BoidSim import Flock
 
+from deap import creator, base, tools, algorithms
 from joblib import load, Parallel, delayed
-import os
-import sklearn
+
+import matplotlib.pyplot as plt
 import multiprocessing as mp
 import numpy as np
+import datetime
+import sklearn
 import random
-from deap import creator, base, tools, algorithms
-import array, datetime
-import matplotlib.pyplot as plt
+import array
+import os
 
 
 class BoidEvolution():
@@ -69,7 +71,7 @@ class BoidEvolution():
 		self.classifiers = [self.alignedClass, self.flockingClass, self.groupedClass]
 
 
-	def prepareEvolution(self):
+	def prepareEvolution(self,lambda_ratio=7):
 		"""
 		Establishes parameters that can be applied uniformly 
 		for the evolutionary methods.
@@ -77,7 +79,7 @@ class BoidEvolution():
 
 		## Evolutionary parameters and limits
 		self.mu = 100  ### Also defines population size for generational and steady GAs
-		self.lambda_ = 7 * self.mu
+		self.lambda_ = lambda_ratio * self.mu
 
 		self.current_evals = 0
 		self.eval_limit = 10000
@@ -118,6 +120,15 @@ class BoidEvolution():
 
 
 	def plotAndRecord(self,logbook,hof,name):
+		"""
+		Code produced for uniformly plotting the results of 
+		each evolutionary method. Authored by Ryan McArdle.
+
+		:param logbook: the logbook for the evolution
+		:param hof: the hall of fame containing the best ind
+		:param name: the name of the method being plotted
+		"""
+
 		### Plotting Code
 		gen = logbook.select("gen")
 		fit_maxes = logbook.select("max")
@@ -174,10 +185,17 @@ class BoidEvolution():
 	def boidFitness(self, species, seed=0, current_evals=3000, eval_limit=3000, detail=False):
 		"""
 		Simulate the species of boid and return the fitness 
-		valuation.
+		valuation. Authored by Ryan McArdle.
 
 		:param species: A list which specifies the parameters 
 			that define a given species of boid.
+		:param seed: a seed to initialize uniform randomization
+		:param current_evals: the current number of evaluations
+			completed
+		:param eval_limit: the total number of evaluations to 
+			be completed
+		:param detail: a bool to determing whether or not to 
+			return behavior-detailed fitness values
 		:return: the evaluated fitness value
 		"""
 
@@ -193,6 +211,7 @@ class BoidEvolution():
 
 		## Classify the instances and calculate fitness
 		progress = self.current_evals/self.eval_limit
+		# Phase 1
 		if progress <= 1/3:
 			alignWeight = 1.0
 			flockWeight = 0.0 
@@ -203,6 +222,7 @@ class BoidEvolution():
 			detail_fits = [np.sum(classes[i])/len(classes[i]) for i in range(len(classes))]
 			weighting = 1
 			
+		# Phase 2
 		elif progress <= 2/3:
 			alignWeight = 2/3
 			flockWeight = 1/6 
@@ -213,6 +233,7 @@ class BoidEvolution():
 			detail_fits = [np.sum(classes[i])/len(classes[i]) for i in range(len(classes))]
 			weighting = self.fitDifferences(detail_fits)
 
+		# Phase 3
 		else:
 			alignWeight = 1/3
 			flockWeight = 1/3
@@ -241,7 +262,7 @@ class BoidEvolution():
 		:param detail_fits: a triple of fitness values for a 
 			single boid with respect to aligned, flocking, 
 			grouped
-		:return: a weight in range [1,3]
+		:return: a weight in range [1/9,1]
 		"""
 
 		difference_measure = np.sum([abs(first-second) for i,first in enumerate(detail_fits) for second in detail_fits[i+1:]])
@@ -500,36 +521,55 @@ class BoidEvolution():
 			#nextGeneration += bestIndv
 
             # perform crossover on pairs until nextGeneration is equal in size to pop
-			while len(nextGeneration) < (len(pop)-2):
-				parents = toolbox.select(pop,2)
-				parents = list(map(toolbox.clone,parents))
-				toolbox.mate(parents[0], parents[1])
-				for parent in parents:
-					del parent.fitness.values
-
-                # mutation of children with 'MUTPB' chance
-				for parent in parents:
-					if random.random() < self.MUTPB:
-						toolbox.mutate(parent)
+			# case that len(pop) is even
+			if len(pop) % 2 == 0:
+				while len(nextGeneration) < (len(pop)):
+					parents = toolbox.select(pop,2)
+					parents = list(map(toolbox.clone,parents))
+					toolbox.mate(parents[0], parents[1])
+					for parent in parents:
 						del parent.fitness.values
 
-                # add the pair of children to nextGeneration
-				nextGeneration.extend(parents)
+					# mutation of children with 'MUTPB' chance
+					for parent in parents:
+						if random.random() < self.MUTPB:
+							toolbox.mutate(parent)
+							del parent.fitness.values
 
-                # adds a single child in the case that len(pop) is odd
-				if len(nextGeneration) == (len(pop)-1):
-					parents = toolbox.select(pop,2)
+					# add the pair of children to nextGeneration
+					nextGeneration.extend(parents)
+
+			# case the len(pop) is odd
+			if len(pop) % 2 == 1:
+				while len(nextGeneration) < len(pop)-2:
+					parents = toolbox.select(pop, 2)
+					parents = list(map(toolbox.clone, parents))
 					toolbox.mate(parents[0], parents[1])
-					child = parents[0]
+					for parent in parents:
+						del parent.fitness.values
+
+					# mutation of children with 'MUTPB' chance
+					for parent in parents:
+						if random.random() < self.MUTPB:
+							toolbox.mutate(parent)
+							del parent.fitness.values
+
+					# add the pair of children to nextGeneration
+					nextGeneration.extend(parents)
+
+				# add one more child to nextGeneration
+				parents = toolbox.select(pop,2)
+				toolbox.mate(parents[0], parents[1])
+				child = parents[0]
+				del child.fitness.values
+
+				# mutation of child
+				if random.random() < self.MUTPB:
+					toolbox.mutate(child)
 					del child.fitness.values
 
-                    # mutation of child
-					if random.random() < self.MUTPB:
-						toolbox.mutate(child)
-						del child.fitness.values
-
-                    # add the child to nextGeneration
-					nextGeneration.extend(list(map(toolbox.clone,child)))
+				# add the child to nextGeneration
+				nextGeneration.extend(list(map(toolbox.clone,child)))
 
 			pop = list(map(toolbox.clone,nextGeneration))
 			####
@@ -569,7 +609,7 @@ class BoidEvolution():
 		return hof[0]
 
 
-	def evolveMuCommaLambda(self):
+	def evolveMuCommaLambda(self,lambda_ratio=7):
 		"""
 		A method to evolve a species of boid using a 
 		(Mu,Lambda) evolutionary strategy. Authored by Ryan 
@@ -578,9 +618,9 @@ class BoidEvolution():
 		:returns: the best individual found by the evolution
 		"""
 		
-		name = "muCommaLambda"
+		name = "muCommaLambda"+str(lambda_ratio)
 
-		self.prepareEvolution()
+		self.prepareEvolution(lambda_ratio)
 
 		## Create Fitness, Individuals, and Strategy variables
 		creator.create("FitnessMax", base.Fitness, weights=(1.0,))
@@ -673,25 +713,25 @@ class BoidEvolution():
 				ind.fitness.values = fit,
 
 
-			#### MuPlusLambda
-			## New generation
-			new_gen = list(map(toolbox.clone, [*pop,*offspring]))
+			##### MuPlusLambda
+			### New generation
+			#new_gen = list(map(toolbox.clone, [*pop,*offspring]))
 
-			## Sort the new generation by fitness
-			new_gen.sort(key=lambda x: x.fitness.values[0])
-
-			## Replace population with top mu of new generation
-			pop = list(map(toolbox.clone, new_gen[-self.mu:]))
-			####
-
-
-			##### MuCommaLambda
 			### Sort the new generation by fitness
-			#offspring.sort(key=lambda x: x.fitness.values[0])
+			#new_gen.sort(key=lambda x: x.fitness.values[0])
 
 			### Replace population with top mu of new generation
-			#pop = list(map(toolbox.clone, offspring[-self.mu:]))
+			#pop = list(map(toolbox.clone, new_gen[-self.mu:]))
 			#####
+
+
+			#### MuCommaLambda
+			## Sort the new generation by fitness
+			offspring.sort(key=lambda x: x.fitness.values[0])
+
+			## Replace population with top mu of new generation
+			pop = list(map(toolbox.clone, offspring[-self.mu:]))
+			####
 
 			##################################################
 			## Record the new generation
@@ -711,7 +751,7 @@ class BoidEvolution():
 		return hof[0]
 
 
-	def evolveMuPlusLambda(self):
+	def evolveMuPlusLambda(self,lambda_ratio=7):
 		"""
 		A method to evolve a species of boid using a 
 		(Mu + Lambda) evolutionary strategy. Method authored
@@ -720,9 +760,9 @@ class BoidEvolution():
 		:returns: the best individual found by the evolution
 		"""
 
-		name = "MuPlusLambda"
+		name = "MuPlusLambda"+str(lambda_ratio)
 
-		self.prepareEvolution()
+		self.prepareEvolution(lambda_ratio)
 
 
 		creator.create("FitnessMax", base.Fitness, weights=(1.0,))
@@ -776,7 +816,7 @@ class BoidEvolution():
 
 		## Main loop
 		while True:
-			if self.current_evals < self.eval_limit:
+			if self.current_evals < (self.eval_limit - self.lambda_):
 				g+=1
 				offspring = toolbox.select(pop, self.lambda_)
 				offspring = list(map(toolbox.clone, offspring))
@@ -938,15 +978,19 @@ class BoidEvolution():
 
 	
 def main():
+	"""
+	The main production run.
+	"""
+
 	evolution = BoidEvolution()
 	evolution.loadClassifiers()
 	
-	##### Run Generational Algorithm
-	#print(f"Generational Algorithm\n")
-	#bestGen = evolution.evolveGeneration()
-	#bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestGen.tolist(),detail=True)
-	#print(f"Best Individual Fitness: {bestFit}")
-	#print(f"Best Detail Fitness: {bestDetailFit}")
+	#### Run Generational Algorithm
+	print(f"Generational Algorithm\n")
+	bestGen = evolution.evolveGeneration()
+	bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestGen.tolist(),detail=True)
+	print(f"Best Individual Fitness: {bestFit}")
+	print(f"Best Detail Fitness: {bestDetailFit}")
 
 	#### Run Steady State Algorithm
 	print(f"Steady State Algorithm\n")
@@ -955,36 +999,94 @@ def main():
 	print(f"Best Individual Fitness: {bestFit}")
 	print(f"Best Detail Fitness: {bestDetailFit}")
 
-	#### Run MuPlusLambda Algorithm
-	print(f"MuPlusLambda Algorithm\n")
-	bestPlus = evolution.evolveMuPlusLambda()
-	bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestPlus.tolist(),detail=True)
-	print(f"Best Individual Fitness: {bestFit}")
-	print(f"Best Detail Fitness: {bestDetailFit}")
-
-	#### Run MuCommaLambda Algorithm
+	#### Run MuCommaLambda Algorithm lambda 3
 	print(f"MuCommaLambda Algorithm\n")
-	bestComma = evolution.evolveMuCommaLambda()
-	bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestComma.tolist(),detail=True)
+	bestComma3 = evolution.evolveMuCommaLambda(3)
+	bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestComma3.tolist(),detail=True)
+	print(f"Best Individual Fitness: {bestFit}")
+	print(f"Best Detail Fitness: {bestDetailFit}")
+
+	#### Run MuCommaLambda Algorithm lambda 5
+	print(f"MuCommaLambda Algorithm\n")
+	bestComma5 = evolution.evolveMuCommaLambda(5)
+	bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestComma5.tolist(),detail=True)
+	print(f"Best Individual Fitness: {bestFit}")
+	print(f"Best Detail Fitness: {bestDetailFit}")
+
+	#### Run MuCommaLambda Algorithm lambda 7
+	print(f"MuCommaLambda Algorithm\n")
+	bestComma7 = evolution.evolveMuCommaLambda(7)
+	bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestComma7.tolist(),detail=True)
+	print(f"Best Individual Fitness: {bestFit}")
+	print(f"Best Detail Fitness: {bestDetailFit}")
+
+	#### Run MuPlusLambda Algorithm lambda 3
+	print(f"MuPlusLambda Algorithm\n")
+	bestComma3 = evolution.evolveMuPlusLambda(3)
+	bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestComma3.tolist(),detail=True)
+	print(f"Best Individual Fitness: {bestFit}")
+	print(f"Best Detail Fitness: {bestDetailFit}")
+
+	#### Run MuPlusLambda Algorithm lambda 5
+	print(f"MuPlusLambda Algorithm\n")
+	bestComma5 = evolution.evolveMuPlusLambda(5)
+	bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestComma5.tolist(),detail=True)
+	print(f"Best Individual Fitness: {bestFit}")
+	print(f"Best Detail Fitness: {bestDetailFit}")
+
+	#### Run MuPlusLambda Algorithm lambda 7
+	print(f"MuPlusLambda Algorithm\n")
+	bestComma7 = evolution.evolveMuPlusLambda(7)
+	bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestComma7.tolist(),detail=True)
+	print(f"Best Individual Fitness: {bestFit}")
+	print(f"Best Detail Fitness: {bestDetailFit}")
+
+	#### Run MuPlusLambda Algorithm lambda 9
+	print(f"MuPlusLambda Algorithm\n")
+	bestComma9 = evolution.evolveMuPlusLambda(9)
+	bestFit, bestDetailFit, bestFitWeight = evolution.boidFitness(bestComma9.tolist(),detail=True)
 	print(f"Best Individual Fitness: {bestFit}")
 	print(f"Best Detail Fitness: {bestDetailFit}")
 
 
-def test():
+def capture():
+	"""
+	A function for capturing screen shots of a sample of boid
+	species.
+	"""
+
 	evolution = BoidEvolution()
 	evolution.loadClassifiers()
-	test_ind = [2.0, 1.5, 2.0, 200, 125.0, 0.5]
-	testFit, testDetailFit, testFitWeight = evolution.boidFitness(test_ind,detail=True)
-	print(f"Test Individual Fitness: {testFit}")
-	print(f"Test Detail Fitness: {testDetailFit}")
+
+	plus5 = [1.1794049594837732, 0.22754940449336683, 1.9286659240839577, 211.38046739036398, 211.38046739036398, 4.723917629683968]
+	plus7 = [0.9663983434633958, 0.41006999668991495, 1.6992531323118576, 300.0, 218.9423592760621, 3.4687458383901055]
+	plus9 = [1.5818627904078295, 0.476525122736921, 2.0, 107.48622707206073, 107.48622707206073, 5.0]
+	gen = [1.6075166383953816, 0.35321763873175777, 2.0, 154.0437861198712, 154.0437861198712, 5.0]
+	custom = [2.0, 1.0, 1.5, 275, 125.0, 1.5]
+	top_inds = [plus5,plus7,plus9]
+	names = ['plus5','plus7','plus9']
 	
 	count=200
 	screen_width = 3000
 	screen_height = screen_width
-	swarm = Flock(random.randint(1,1e10), count, screen_width, screen_height, *test_ind)
-	swarm.animate()
+	seed = random.randint(1,1e10)
+
+	### Screen-cap best individuals
+	#for i,ind in enumerate(top_inds):
+	#	swarm = Flock(seed, count, screen_width, screen_height, *ind)
+	#	swarm.animate(screen_cap=True,name=str(names[i]))
+
+	## Screen-cap custom individual
+	swarm = Flock(random.randint(1,1e10), count, screen_width, screen_height, *gen)
+	swarm.animate(screen_cap=True,name='Gen')
+
+
 
 def testStrat():
+	"""
+	A function for testing a single evolution method.
+	"""
+
 	evolution = BoidEvolution()
 	best_ind = evolution.evolveGeneration()
 	print(best_ind)
@@ -1000,7 +1102,7 @@ def testStrat():
 
 
 if __name__ == '__main__':
-	main()
+	#main()
 	#testStrat()
-	#test()
+	capture()
 

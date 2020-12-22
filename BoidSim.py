@@ -16,6 +16,7 @@ import numpy as np
 import datetime
 import random
 import math
+import os
 
 class Boid:
     def __init__(self, x, y, width, height, alignWeight, sepWeight, cohWeight, alignCohRadius, sepRadius, maxAccel):
@@ -231,7 +232,7 @@ class Flock:
         self.V = np.ndarray((count,2), buffer=np.array([(boid.velocity.x,boid.velocity.y) for boid in self.boids]))
 
 
-    def animate(self,end=True,record=True):
+    def animate(self,end=True,record=True,screen_cap=False,name='capture'):
         import matplotlib.pyplot as plt
         from matplotlib.animation import FuncAnimation
 
@@ -250,6 +251,15 @@ class Flock:
             if record==True and self.record == True:
                 self.instances.append([func(lst) for lst in self.lists for func in self.agg_funcs])
 
+            if self.capture:
+                cur_dir = os.getcwd()
+                prob_dir = os.path.join(cur_dir,'screen_caps\\')
+                if not os.path.exists(prob_dir):
+                    os.mkdir(prob_dir)
+                time_dir = os.path.join(prob_dir,f'{name}\\')
+                os.mkdir(time_dir)
+                plt.savefig(os.path.join(time_dir,'plot.png'))
+
             ## Update animation information
             arrows.set_offsets(self.P)
             arrows.set_UVC(self.V[:,0], self.V[:,1])
@@ -258,6 +268,8 @@ class Flock:
         self.frames = 0
         self.stop = False
         self.record = False
+        self.capture = False
+        self.screen_cap = screen_cap
 
         ## Prepares for data collection
         self.agg_funcs = [np.min,np.max,np.mean,np.std,np.median]
@@ -286,6 +298,7 @@ class Flock:
         self.frames = 0
         self.stop = False
         self.record = False
+        self.screen_cap = False
 
         ## Prepares for data collection
         self.agg_funcs = [np.min,np.max,np.mean,np.std,np.median]
@@ -354,6 +367,10 @@ class Flock:
             self.record = True
         if self.frames == delay+length:
             self.stop = True
+        if self.screen_cap and self.frames==100:
+            self.capture = True
+        if self.screen_cap and self.frames==101:
+            self.capture = False
 
 
 
