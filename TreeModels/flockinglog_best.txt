@@ -1,5 +1,0 @@
-Overall Best Model: {'max_depth': 30, 'max_features': 'sqrt', 'min_samples_leaf': 10, 'min_samples_split': 30, 'n_estimators': 50}
-
-Overall Best CV Score: 0.8740009020260893
-
-
