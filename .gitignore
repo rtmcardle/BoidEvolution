@@ -11,6 +11,8 @@ myEvolve.py
 /GBCModels/
 /BoidEnv/
 
+*.pyproj
+*.sln
 
 # User-specific files
 *.rsuser
